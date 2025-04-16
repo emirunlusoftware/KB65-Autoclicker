@@ -238,7 +238,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 				case INFOBUTTON:
 				{
-					ShellExecute(NULL, "open", "https://www.google.com.tr", NULL, NULL, SW_SHOWNORMAL);
+					ShellExecute(NULL, "open", "https://raw.githubusercontent.com/emirunlusoftware/KB65-Autoclicker/b49ea0cf42fdcb897e400ffea852051b22bb5d23/KB65%20Autoclicker%20User%20Guide.pdf", NULL, NULL, SW_SHOWNORMAL);
 					break;
 				}
 
