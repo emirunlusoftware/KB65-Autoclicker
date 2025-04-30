@@ -73,23 +73,27 @@
 #define SETTINGSFRAME				949
 #define THEMEGROUPBOX				950
 #define THEMESLISTCOMBOBOX			951
-#define MINIMIZEONTRAY				952
-#define ALWAYSONTOP					953
-#define DEBUGHOTKEYBUTTON			954
-#define BACKTOMAINBUTTON			955
+#define RANDINTERVALHOLDTIMEFRAME	952
+#define RANDOMINTERVALENTER			953
+#define HOLDTIMEENTER				954
+#define MINIMIZEONTRAY				955
+#define ALWAYSONTOP					956
+#define DEBUGHOTKEYBUTTON			957
+#define BACKTOMAINBUTTON			958
 
 
 // OTHER ID'S
-#define OPENTRAY					956
-#define QUITTRAY					957
-#define MINIMIZETRAY				958
-#define MAXIMIZETRAY				WM_USER + 1
-#define AUTOCLICKERTIMER			959
-#define AUTOPRESSERTIMER			960
-#define AUTOCLICKERCOUNTDOWN		961
-#define AUTOPRESSERCOUNTDOWN		962
-#define AUTOCLICKER_TICKTOCK		963
-#define AUTOPRESSER_TICKTOCK		964
+#define OPENTRAY					959
+#define QUITTRAY					960
+#define MINIMIZETRAY				961
+#define MAXIMIZETRAY				(WM_USER + 1)
+#define AUTOCLICKERTIMER			962
+#define AUTOPRESSERTIMER			963
+#define AUTOCLICKERCOUNTDOWN		964
+#define AUTOPRESSERCOUNTDOWN		965
+#define AUTOCLICKER_TICKTOCK		966
+#define AUTOPRESSER_TICKTOCK		967
+#define HOLDTIME					968
 
 
 
@@ -164,7 +168,10 @@ keyboardEnterMilliSecond,
 keyboardSelectKey,
 
 settingsFrame,
-themeSelect;
+themeSelect,
+randIntervalAndHoldTimeFrame,
+randomIntervalEnter,
+holdTimeEnter;
 
 void LoadingEntries(HWND hWnd, HINSTANCE hInstance);
 
@@ -190,15 +197,21 @@ void SaveInit(HWND hWnd);
 
 
 /* input.cpp */
-#define HOTKEYAUTOCLICKER 1
-#define HOTKEYAUTOPRESSER 2
+#define HOTKEYAUTOCLICKER		1
+#define HOTKEYAUTOPRESSER		2
+#define CONT_CLICKERHOLDTIME	(WM_USER + 2)
+#define STOP_CLICKERHOLDTIME		(WM_USER + 3)
 
 #define SINGLE	1
 #define DOUBLE	2
 #define XTRA	16
 
 extern OSVERSIONINFO winver;
+
+extern bool holdingInProgress;
+
 extern UINT
+g_clickType, g_mouseButton,
 mouseButton,
 mouseHotkey,
 mouseSpecialKey,
@@ -230,7 +243,9 @@ void GetDebugHexCode(HWND debugHotkeyButton);
 int GetMouseButton(HWND mouseLmBText);
 int GetMouseClickType(HWND mouseClickStartTypeParam);
 UINT GetKeyboardKey(HWND keyboardSelectedKey);
-void StartAutoClicker(int clickType, int mouseButton);
+void StartAutoClicker(HWND hWnd, UINT clickType, UINT mouseButton);
+void StopClickerHoldTime();
+void ContinueClickerHoldTime();
 void StartAutoPresser(UINT keyboardKey);
 
 
@@ -247,6 +262,7 @@ void GetImages(HDC hdc, int themeOption);
 
 float DPIScale();
 bool isWindowsNT();
+bool isWindowsXPLater();
 void ActiveAppearance(HWND hWnd, int modType, bool isEnabled, int specParam);
 void HotkeyButtonAppearance(HWND hotkeyButton, bool isEnabled);
 void HotkeySelectionAppearance(HWND hWnd, int mouseActive, int keyboardActive, bool isEnabled);
@@ -285,9 +301,11 @@ void PageTexts(HDC hdc, int pageTexts);
 /* themes.cpp */
 #define THEMEDEFAULT	0
 #define THEMEBURLYWOOD	1
-#define THEMEGREY		2
-#define THEMESOCCER		3
-#define THEMEOCEANIC	4
+#define THEMEGOLD		2
+#define THEMEGREY		3
+#define THEMELILAC		4
+#define THEMESOCCER		5
+#define THEMEOCEANIC	6
 
 extern int themeOption;
 extern HBRUSH themeColor;
@@ -303,23 +321,30 @@ void SelectTheme(int themeOption);
 #define TIMERAUTOCLICKER 1
 #define TIMERAUTOPRESSER 2
 
-void RepeatTimes(HWND hWnd, int modType);
-
-extern int
-mouseClickStartRepeatTimes,
-mouseClickStartRepeatTimesLimit,
-mouseClickStartRepeatCountdown,
+extern unsigned int
+mouseTimerDuration,
+mouseClickRepeatTimes,
+mouseClickRepeatTimesLimit,
+mouseClickRepeatCountdown,
+keyboardTimerDuration,
 
 keyboardPressRepeatTimes,
 keyboardPressRepeatTimesLimit,
-keyboardPressRepeatCountdown;
+keyboardPressRepeatCountdown,
+holdTime;
 
 int GetRepeatTimer(HWND hWnd, int modType);
 int UpdateCountdown(int modType);
-void SetAppTimer(HWND hWnd, int selectMod);
+
+bool SetAppTimer(HWND hWnd, int selectMod);
 
 extern bool isClickerTimerActive;
-void SetAutoclickerTimer(HWND hWnd);
+bool SetAutoclickerTimer(HWND hWnd);
 
 extern bool isPresserTimerActive;
-void SetAutopresserTimer(HWND hWnd);
+bool SetAutopresserTimer(HWND hWnd);
+
+void RepeatTimes(HWND hWnd, int modType);
+
+extern int randIntervalEditValue, holdTimeEditValue;
+int RandomInterval();

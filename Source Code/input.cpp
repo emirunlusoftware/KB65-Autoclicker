@@ -525,6 +525,8 @@ void GetHotkey(HWND hWnd, UINT *hotkey, bool *hotkeySelected, int selectMod)
 
 
 
+void LoadHotkey(HWND hWnd, UINT *specialKey, UINT *hotkey, int selectMod);
+
 void LoadHotkeyW(HWND hWnd, WCHAR *hotkeySpecTxtW, UINT *specialKey, WCHAR *hotkeyTxtW, UINT *hotkey, int selectMod)
 {
 	if (*specialKey == 0)
@@ -533,22 +535,7 @@ void LoadHotkeyW(HWND hWnd, WCHAR *hotkeySpecTxtW, UINT *specialKey, WCHAR *hotk
 		swprintf(hotkeyUnicodeBuffer,  L"Hotkey: %ls + %ls", hotkeySpecTxtW, hotkeyTxtW);
 
 	SetWindowTextW(selectMod == HOTKEYAUTOCLICKER ? mouseHotkeyButton : keyboardHotkeyButton, hotkeyUnicodeBuffer);
-
-
-	if (selectMod == HOTKEYAUTOPRESSER && (mouseHotkey == keyboardHotkey) && (mouseSpecialKey == keyboardSpecialKey))
-	{
-		keyboardHotkeyTemp = mouseHotkey;
-		UnregisterHotKey(hWnd, KEYBOARDPRESSHOTKEY);
-		RegisterHotKey(hWnd, MOUSECLICKHOTKEY, *specialKey, *hotkey);
-	}
-
-	else
-	{
-		RegisterHotKey(hWnd,
-			selectMod == HOTKEYAUTOCLICKER ? MOUSECLICKHOTKEY : KEYBOARDPRESSHOTKEY,
-			*specialKey,
-			*hotkey);
-	}
+	LoadHotkey(hWnd, specialKey, hotkey, selectMod);
 }
 
 
@@ -561,15 +548,19 @@ void LoadHotkeyA(HWND hWnd, char *hotkeySpecTxtA, UINT *specialKey, char *hotkey
 		sprintf(hotkeyAsciiBuffer,  "Hotkey: %s + %s", hotkeySpecTxtA, hotkeyTxtA);
 
 	SetWindowTextA(selectMod == HOTKEYAUTOCLICKER ? mouseHotkeyButton : keyboardHotkeyButton, hotkeyAsciiBuffer);
+	LoadHotkey(hWnd, specialKey, hotkey, selectMod);
+}
 
 
+
+void LoadHotkey(HWND hWnd, UINT *specialKey, UINT *hotkey, int selectMod)
+{
 	if (selectMod == HOTKEYAUTOPRESSER && (mouseHotkey == keyboardHotkey) && (mouseSpecialKey == keyboardSpecialKey))
 	{
 		keyboardHotkeyTemp = mouseHotkey;
 		UnregisterHotKey(hWnd, KEYBOARDPRESSHOTKEY);
 		RegisterHotKey(hWnd, MOUSECLICKHOTKEY, *specialKey, *hotkey);
 	}
-
 	else
 	{
 		RegisterHotKey(hWnd,
@@ -639,16 +630,16 @@ int GetMouseClickType(HWND mouseClickStartTypeParam)
 {
 	if (SendMessage(mouseLmB, CB_GETCURSEL, 0, 0) != CB_ERR)
 	{
-		TCHAR mouseClickStartTypeText[16];
+		char mouseClickStartTypeText[16];
 		SendMessage(mouseClickStartTypeParam, CB_GETLBTEXT, SendMessage(mouseClickStartTypeParam, CB_GETCURSEL, 0, 0), (LPARAM)mouseClickStartTypeText);
 
-		if (_tcscmp(mouseClickStartTypeText, _T("Single (x1)")) == 0)
+		if (strcmp(mouseClickStartTypeText, "Single (x1)") == 0)
 			return 1;
 
-		else if (_tcscmp(mouseClickStartTypeText, _T("Double (x2)")) == 0)
+		else if (strcmp(mouseClickStartTypeText, "Double (x2)") == 0)
 			return 2;
 
-		else if (_tcscmp(mouseClickStartTypeText, _T("Xtra (x16)")) == 0)
+		else if (strcmp(mouseClickStartTypeText, "Xtra (x16)") == 0)
 			return 16;
 	}
 	// Default
@@ -668,46 +659,117 @@ UINT GetKeyboardKey(HWND keyboardSelectedKey)
 }
 
 
-
-void StartAutoClicker(int clickType, int mouseButton)
+bool holdingInProgress = 0;
+VOID CALLBACK HoldTimeProc(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 {
+	KillTimer(hWnd, HOLDTIME);
+	holdingInProgress = 0;
+	PostMessage(hWnd, CONT_CLICKERHOLDTIME, 0, 0);
+}
+
+void ContinueClickerHoldTime();
+UINT g_clickType, g_mouseButton;
+void StartAutoClicker(HWND hWnd, UINT clickType, UINT mouseButton)
+{
+	g_clickType = clickType;
+	g_mouseButton = mouseButton;
 	INPUT mouseClickStart[32] = {0};
 
 	mouseClickStart[0].type = INPUT_MOUSE;
 	mouseClickStart[0].mi.dwFlags = mouseButton;
 
-	mouseClickStart[1].type = INPUT_MOUSE;
-	mouseClickStart[1].mi.dwFlags = mouseButton * 2;
+	if (holdTimeEditValue != 0)
+	{
+		holdingInProgress = 1;
+		SendInput(1, mouseClickStart, sizeof(INPUT));
+		SetTimer(hWnd, HOLDTIME, holdTimeEditValue, HoldTimeProc);
+	}
+	else
+	{
+		mouseClickStart[1].type = INPUT_MOUSE;
+		mouseClickStart[1].mi.dwFlags = mouseButton * 2;
 
-	switch (clickType)
+		switch (clickType)
+		{
+			case SINGLE:
+				SendInput(2, mouseClickStart, sizeof(INPUT));
+				break;
+
+			case DOUBLE:
+			{
+				mouseClickStart[2].type = INPUT_MOUSE;
+				mouseClickStart[2].mi.dwFlags = mouseButton;
+
+				mouseClickStart[3].type = INPUT_MOUSE;
+				mouseClickStart[3].mi.dwFlags = mouseButton * 2;
+
+				SendInput(clickType * 2, mouseClickStart, sizeof(INPUT));
+				break;
+			}
+
+			case XTRA:
+			{
+				for (int i = 2; i < sizeof(mouseClickStart)/sizeof(mouseClickStart[0]); i+=2)
+				{
+					mouseClickStart[i].type = INPUT_MOUSE;
+					mouseClickStart[i].mi.dwFlags = mouseButton;
+
+					mouseClickStart[i+1].type = INPUT_MOUSE;
+					mouseClickStart[i+1].mi.dwFlags = mouseButton * 2;
+				}
+				SendInput(clickType * 2, mouseClickStart, sizeof(INPUT));
+				break;
+			}
+		}
+	}
+}
+
+void StopClickerHoldTime()
+{
+	holdingInProgress = 0;
+	INPUT cancelledClick[1] = {0};
+
+	cancelledClick[0].type = INPUT_MOUSE;
+	cancelledClick[0].mi.dwFlags = g_mouseButton * 2;
+	SendInput(1, cancelledClick, sizeof(INPUT));
+}
+
+void ContinueClickerHoldTime()
+{
+	INPUT mouseClickStart[32] = {0};
+
+	mouseClickStart[0].type = INPUT_MOUSE;
+	mouseClickStart[0].mi.dwFlags = g_mouseButton * 2;
+
+	switch (g_clickType)
 	{
 		case SINGLE:
-			SendInput(2, mouseClickStart, sizeof(INPUT));
+			SendInput(1, mouseClickStart, sizeof(INPUT));
 			break;
 
 		case DOUBLE:
 		{
+			mouseClickStart[1].type = INPUT_MOUSE;
+			mouseClickStart[1].mi.dwFlags = g_mouseButton;
+
 			mouseClickStart[2].type = INPUT_MOUSE;
-			mouseClickStart[2].mi.dwFlags = mouseButton;
+			mouseClickStart[2].mi.dwFlags = g_mouseButton * 2;
 
-			mouseClickStart[3].type = INPUT_MOUSE;
-			mouseClickStart[3].mi.dwFlags = mouseButton * 2;
-
-			SendInput(clickType * 2, mouseClickStart, sizeof(INPUT));
+			SendInput((g_clickType * 2) - 1, mouseClickStart, sizeof(INPUT));
 			break;
 		}
 
 		case XTRA:
 		{
-			for (int i = 2; i < sizeof(mouseClickStart)/sizeof(mouseClickStart[0]); i+=2)
+			for (int i = 1; i < sizeof(mouseClickStart)/sizeof(mouseClickStart[0]); i+=2)
 			{
 				mouseClickStart[i].type = INPUT_MOUSE;
-				mouseClickStart[i].mi.dwFlags = mouseButton;
+				mouseClickStart[i].mi.dwFlags = g_mouseButton;
 
 				mouseClickStart[i+1].type = INPUT_MOUSE;
-				mouseClickStart[i+1].mi.dwFlags = mouseButton * 2;
+				mouseClickStart[i+1].mi.dwFlags = g_mouseButton * 2;
 			}
-			SendInput(clickType * 2, mouseClickStart, sizeof(INPUT));
+			SendInput((g_clickType * 2) - 1, mouseClickStart, sizeof(INPUT));
 			break;
 		}
 	}

@@ -254,7 +254,7 @@ void SettingsButtons(HWND hWnd, HINSTANCE hInstance)
 	infoButton = CreateWindow(
 		"BUTTON", 0,
 		WS_VISIBLE | WS_TABSTOP | WS_CHILD | BS_ICON,
-		373.0 * DPIScale(), 253.0 * DPIScale(),
+		373.0 * DPIScale(), 254.0 * DPIScale(),
 		24.0 * DPIScale(), 24.0 * DPIScale(),
 		hWnd,
 		(HMENU)INFOBUTTON,
@@ -269,7 +269,7 @@ void SettingsButtons(HWND hWnd, HINSTANCE hInstance)
 	loadScriptsButton = CreateWindow(
 		"BUTTON", 0,
 		WS_VISIBLE | WS_TABSTOP | WS_CHILD | BS_ICON,
-		373.0 * DPIScale(), 280.0 * DPIScale(),
+		373.0 * DPIScale(), 281.0 * DPIScale(),
 		24.0 * DPIScale(), 24.0 * DPIScale(),
 		hWnd,
 		(HMENU)LOADSCRIPTSBUTTON,
@@ -284,7 +284,7 @@ void SettingsButtons(HWND hWnd, HINSTANCE hInstance)
 	saveScriptsButton = CreateWindow(
 		"BUTTON", 0,
 		WS_VISIBLE | WS_TABSTOP | WS_CHILD | BS_ICON,
-		373.0 * DPIScale(), 307.0 * DPIScale(),
+		373.0 * DPIScale(), 308.0 * DPIScale(),
 		24.0 * DPIScale(), 24.0 * DPIScale(),
 		hWnd,
 		(HMENU)SAVESCRIPTSBUTTON,
@@ -299,7 +299,7 @@ void SettingsButtons(HWND hWnd, HINSTANCE hInstance)
 	settingsButton = CreateWindow(
 		"BUTTON", 0,
 		WS_VISIBLE | WS_TABSTOP | WS_CHILD | BS_ICON,
-		373.0 * DPIScale(), 334.0 * DPIScale(),
+		373.0 * DPIScale(), 335.0 * DPIScale(),
 		24.0 * DPIScale(), 24.0 * DPIScale(),
 		hWnd,
 		(HMENU)SETTINGSBUTTON,
@@ -315,14 +315,14 @@ void SettingsButtons(HWND hWnd, HINSTANCE hInstance)
 	themesList = CreateWindow(
 		"COMBOBOX", NULL,
 		CBS_DROPDOWNLIST | CBS_AUTOHSCROLL | WS_HSCROLL | WS_TABSTOP | WS_CHILD,
-		132.0 * DPIScale(), 82.0 * DPIScale(),
+		132.0 * DPIScale(), 59.0 * DPIScale(),
 		136.0 * DPIScale(), 5.0 * 25.0 * DPIScale(),
 		hWnd, (HMENU)THEMESLISTCOMBOBOX, hInstance, NULL
 	);
 
 	const TCHAR* themes[] =
 	{
-		"Default", "Burlywood", "Gray", "Soccer Pitch", "Oceanic",
+		"Default", "Burlywood", "Gold", "Gray", "Lilac", "Soccer Pitch", "Oceanic"
 	};
 
 	for (int i = 0; i < (sizeof(themes)/sizeof(themes[0])); ++i)
@@ -340,7 +340,7 @@ void SettingsButtons(HWND hWnd, HINSTANCE hInstance)
 	minimizeOnTray = CreateWindow(
 		"BUTTON", "Minimize on System Tray",
 		BS_AUTOCHECKBOX | WS_TABSTOP | WS_CHILD,
-		120.0 * DPIScale(), 130.0 * DPIScale(),
+		120.0 * DPIScale(), 100.0 * DPIScale(),
 		textSize.cx * DPIScale(), 22.0 * DPIScale(),
 		hWnd,
 		(HMENU)MINIMIZEONTRAY,
@@ -358,7 +358,7 @@ void SettingsButtons(HWND hWnd, HINSTANCE hInstance)
 	alwaysOnTop = CreateWindow(
 		"BUTTON", "Always on Top",
 		BS_AUTOCHECKBOX | WS_TABSTOP | WS_CHILD,
-		120.0 * DPIScale(), 160.0 * DPIScale(),
+		120.0 * DPIScale(), 125.0 * DPIScale(),
 		textSize.cx * DPIScale(), 22.0 * DPIScale(),
 		hWnd,
 		(HMENU)ALWAYSONTOP,
@@ -370,8 +370,8 @@ void SettingsButtons(HWND hWnd, HINSTANCE hInstance)
 	debugHotkeyButton = CreateWindow(
 		"BUTTON", "Find HEX keycode",
 		BS_PUSHBUTTON | WS_TABSTOP | WS_CHILD,
-		120.0 * DPIScale(), 200.0 * DPIScale(),
-		160.0 * DPIScale(), 50.0 * DPIScale(),
+		119.0 * DPIScale(), 247.0 * DPIScale(),
+		162.0 * DPIScale(), 44.0 * DPIScale(),
 		hWnd,
 		(HMENU)DEBUGHOTKEYBUTTON,
 		hInstance,

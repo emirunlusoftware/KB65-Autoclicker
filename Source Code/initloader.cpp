@@ -141,6 +141,12 @@ void LoadInit(HWND hWnd)
 			SelectTheme(themeOption);
 			InvalidateRect(hWnd, NULL, TRUE);
 
+			GetPrivateProfileStringW(L"Settings", L"RandomInterval", L"0", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
+			SetWindowTextW(randomIntervalEnter, bufLoadW);
+
+			GetPrivateProfileStringW(L"Settings", L"MouseHoldTime", L"0", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
+			SetWindowTextW(holdTimeEnter, bufLoadW);
+
 			GetPrivateProfileStringW(L"Settings", L"MinimizeOnSystemTray", L"1", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
 			isTrayChecked = _wtoi(bufLoadW);
 			SendMessage(minimizeOnTray, BM_SETCHECK, isTrayChecked, 0);
@@ -286,6 +292,12 @@ void LoadInit(HWND hWnd)
 			SendMessageA(themesList, CB_SETCURSEL, themeOption, 0);
 			SelectTheme(themeOption);
 			InvalidateRect(hWnd, NULL, TRUE);
+
+			GetPrivateProfileStringA("Settings", "RandomInterval", "0", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
+			SetWindowTextA(randomIntervalEnter, bufLoadA);
+
+			GetPrivateProfileStringA("Settings", "MouseHoldTime", "0", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
+			SetWindowTextA(holdTimeEnter, bufLoadA);
 
 			GetPrivateProfileStringA("Settings", "MinimizeOnSystemTray", "1", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
 			isTrayChecked = atoi(bufLoadA);
@@ -444,6 +456,12 @@ void SaveInit(HWND hWnd)
 			swprintf(bufSaveW, L"%d", themeOption);
 			WritePrivateProfileStringW(L"Settings", L"Theme", bufSaveW, ofnSaveW.lpstrFile);
 
+			GetWindowTextW(randomIntervalEnter, bufSaveW, sizeof(bufSaveW)/sizeof(bufSaveW[0]));
+			WritePrivateProfileStringW(L"Settings", L"RandomInterval", bufSaveW, ofnSaveW.lpstrFile);
+
+			GetWindowTextW(holdTimeEnter, bufSaveW, sizeof(bufSaveW)/sizeof(bufSaveW[0]));
+			WritePrivateProfileStringW(L"Settings", L"MouseHoldTime", bufSaveW, ofnSaveW.lpstrFile);
+
 			swprintf(bufSaveW, L"%d", isTrayChecked);
 			WritePrivateProfileStringW(L"Settings", L"MinimizeOnSystemTray", bufSaveW, ofnSaveW.lpstrFile);
 
@@ -591,6 +609,12 @@ void SaveInit(HWND hWnd)
 
 			sprintf(bufSaveA, "%d", themeOption);
 			WritePrivateProfileStringA("Settings", "Theme", bufSaveA, ofnSaveA.lpstrFile);
+
+			GetWindowTextA(randomIntervalEnter, bufSaveA, sizeof(bufSaveA)/sizeof(bufSaveA[0]));
+			WritePrivateProfileStringA("Settings", "RandomInterval", bufSaveA, ofnSaveA.lpstrFile);
+
+			GetWindowTextA(holdTimeEnter, bufSaveA, sizeof(bufSaveA)/sizeof(bufSaveA[0]));
+			WritePrivateProfileStringA("Settings", "MouseHoldTime", bufSaveA, ofnSaveA.lpstrFile);
 
 			sprintf(bufSaveA, "%d", isTrayChecked);
 			WritePrivateProfileStringA("Settings", "MinimizeOnSystemTray", bufSaveA, ofnSaveA.lpstrFile);

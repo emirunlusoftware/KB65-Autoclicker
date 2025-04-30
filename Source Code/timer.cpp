@@ -1,5 +1,6 @@
 #include "main.h"
 #include <stdio.h>
+#include <time.h>
 
 
 
@@ -23,27 +24,30 @@ keyboardPressRepeatTimerArray[3];
 
 
 
-static UINT
-mouseTimerDuration = 1000,
-keyboardTimerDuration = 1000,
+static unsigned int
 mouseClickRepeatTimerDuration = 0,
 keyboardPressRepeatTimerDuration = 0;
 
 
-int
+unsigned int
+mouseTimerDuration = 1000,
 mouseClickRepeatTimes,
 mouseClickRepeatTimesLimit = 0,
 mouseClickRepeatCountdown,
+keyboardTimerDuration = 1000,
+
 keyboardPressRepeatTimes,
 keyboardPressRepeatTimesLimit,
-keyboardPressRepeatCountdown;
+keyboardPressRepeatCountdown,
+holdTime;
 
 
 int GetRepeatTimer(HWND hWnd, int modType);
 int CountdownStarter(HWND hWnd, int modType);
 int UpdateCountdown(int modType);
-void SetAutoclickerTimer(HWND hWnd);
-void SetAutopresserTimer(HWND hWnd);
+bool SetAutoclickerTimer(HWND hWnd);
+bool SetAutopresserTimer(HWND hWnd);
+bool GetRandomIntervalHoldTime(int durationOfMods, int modType);
 
 
 int GetRepeatTimer(HWND hWnd, int modType)
@@ -66,7 +70,7 @@ int GetRepeatTimer(HWND hWnd, int modType)
 						return 1;
 
 					case 1:
-						StartAutoClicker(clickType, mouseButton);
+						StartAutoClicker(hWnd, clickType, mouseButton);
 						return 1;
 				}
 
@@ -260,16 +264,18 @@ int UpdateCountdown(int modType)
 
 
 
-void SetAppTimer(HWND hWnd, int selectMod)
+bool SetAppTimer(HWND hWnd, int selectMod)
 {
 	switch(selectMod)
 	{
 		case TIMERAUTOCLICKER:
-			SetAutoclickerTimer(hWnd);
+			if (SetAutoclickerTimer(hWnd) == 1)
+				return 1;
 			break;
 
 		case TIMERAUTOPRESSER:
-			SetAutopresserTimer(hWnd);
+			if (SetAutopresserTimer(hWnd) == 1)
+				return 1;
 			break;
 	}
 
@@ -305,19 +311,24 @@ void SetAppTimer(HWND hWnd, int selectMod)
 			break;
 	}
 
+	char holdTimeArray[5];
+	GetWindowText(holdTimeEnter, holdTimeArray, 4);
+	holdTime = atoi(holdTimeArray);
+
 	EnableWindow(mouseHotkeyButton, !hideHotkeys);
 	EnableWindow(keyboardHotkeyButton, !hideHotkeys);
 	EnableWindow(loadScriptsButton, !hideHotkeys);
 	EnableWindow(saveScriptsButton, !hideHotkeys);
+
+	return 0;
 }
 
 
 
-void SetAutoclickerTimer(HWND hWnd)
+bool SetAutoclickerTimer(HWND hWnd)
 {
 	if (isClickerTimerActive)
 	{
-		SetWindowText(mouseClickStart, "Start");
 		KillTimer(hWnd, AUTOCLICKERTIMER);
 		isClickerTimerActive = false;
 	}
@@ -336,16 +347,23 @@ void SetAutoclickerTimer(HWND hWnd)
 		GetWindowText(mouseEnterHour, mouseTimerArray, 4);
 		mouseTimerDuration += atoi(mouseTimerArray) * 60 * 60 * 1000;
 
-		isClickerTimerActive = true;
+
+		if (GetRandomIntervalHoldTime(mouseTimerDuration, AUTOCLICKER) == 1)
+			return 1;
+
+		StartAutoClicker(hWnd, clickType, mouseButton);
 		RepeatTimes(hWnd, AUTOCLICKER);
-		StartAutoClicker(clickType, mouseButton);
-		SetTimer(hWnd, AUTOCLICKERTIMER, mouseTimerDuration, NULL);
+
+		SetTimer(hWnd, AUTOCLICKERTIMER, mouseTimerDuration + RandomInterval(), NULL);
+		isClickerTimerActive = true;
 	}
+
+	return 0;
 }
 
 
 
-void SetAutopresserTimer(HWND hWnd)
+bool SetAutopresserTimer(HWND hWnd)
 {
 	if (isPresserTimerActive)
 	{
@@ -368,12 +386,19 @@ void SetAutopresserTimer(HWND hWnd)
 		keyboardTimerDuration += atoi(keyboardTimerArray) * 3600000;
 
 
-		isPresserTimerActive = true;
-		SetTimer(hWnd, AUTOPRESSERTIMER, keyboardTimerDuration, NULL);
-		RepeatTimes(hWnd, AUTOPRESSER);
+		if (GetRandomIntervalHoldTime(keyboardTimerDuration, AUTOPRESSER) == 1)
+			return 1;
+
 		if (keyboardSpecialKey == 0)
+		{
 			StartAutoPresser(keyboardKey);
+			RepeatTimes(hWnd, AUTOPRESSER);
+		}
+		SetTimer(hWnd, AUTOPRESSERTIMER, keyboardTimerDuration + RandomInterval(), NULL);
+		isPresserTimerActive = true;
 	}
+
+	return 0;
 }
 
 
@@ -414,4 +439,35 @@ void RepeatTimes(HWND hWnd, int modType)
 			break;
 		}
 	}
+}
+
+
+
+int randIntervalEditValue, holdTimeEditValue;
+bool GetRandomIntervalHoldTime(int durationOfMods, int modType)
+{
+	char randIntervalArray[5] = {0}, holdTimeArray[5] = {0};
+	GetWindowText(randomIntervalEnter, randIntervalArray, 5);
+	GetWindowText(holdTimeEnter, holdTimeArray, 5);
+
+	randIntervalEditValue = atoi(randIntervalArray);
+	holdTimeEditValue = atoi(holdTimeArray);
+	switch(modType)
+	{
+		case AUTOCLICKER:
+			if (durationOfMods <= randIntervalEditValue + holdTimeEditValue)
+				return 1;
+
+		case AUTOPRESSER:
+			if (durationOfMods <= randIntervalEditValue)
+				return 1;
+	}
+	return 0;
+}
+
+
+
+inline int RandomInterval()
+{
+	return ((rand() % (2 * randIntervalEditValue + 1)) - randIntervalEditValue);
 }

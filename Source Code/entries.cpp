@@ -33,7 +33,10 @@ keyboardEnterMilliSecond,
 keyboardSelectKey,
 
 settingsFrame,
-themeSelect;
+themeSelect,
+randIntervalAndHoldTimeFrame,
+randomIntervalEnter,
+holdTimeEnter;
 
 
 void AutoClickerEntries(HWND hWnd, HINSTANCE hInstance)
@@ -265,8 +268,8 @@ void SettingsEntries(HWND hWnd, HINSTANCE hInstance)
 	settingsFrame = CreateWindowEx(
 		0, "BUTTON", "Settings",
 		BS_GROUPBOX | BS_CENTER | WS_CHILD,
-		75.0 * DPIScale(), (30.0 - 8.0) * DPIScale(),
-		250.0 * DPIScale(), 252.0 * DPIScale(),
+		75.0 * DPIScale(), (15.0 - 6.0) * DPIScale(),
+		250.0 * DPIScale(), 293.0 * DPIScale(),
 		hWnd, (HMENU)SETTINGSFRAME, hInstance, NULL
 	);
 
@@ -274,10 +277,49 @@ void SettingsEntries(HWND hWnd, HINSTANCE hInstance)
 	themeSelect = CreateWindowEx(
 		0, "BUTTON", "Select Theme",
 		BS_GROUPBOX | BS_CENTER | WS_CHILD,
-		120.0 * DPIScale(), (70.0 - 8.0) * DPIScale(),
-		160.0 * DPIScale(), 57.0 * DPIScale(),
+		120.0 * DPIScale(), (45.0 - 6.0) * DPIScale(),
+		160.0 * DPIScale(), 56.0 * DPIScale(),
 		hWnd, (HMENU)THEMEGROUPBOX, hInstance, NULL
 	);
+
+
+	randIntervalAndHoldTimeFrame = CreateWindowEx(
+		0, "BUTTON", "Random Interval / Hold Time",
+		BS_GROUPBOX | BS_CENTER | WS_CHILD,
+		120.0 * DPIScale(), (170.0 - 6.0) * DPIScale(),
+		160.0 * DPIScale(), 54.0 * DPIScale(),
+		hWnd, (HMENU)RANDINTERVALHOLDTIMEFRAME, hInstance, NULL
+	);
+
+	randomIntervalEnter = CreateWindowEx(
+		WS_EX_CLIENTEDGE, "EDIT", 0,
+		WS_TABSTOP | WS_CHILD | ES_NUMBER | ES_CENTER,
+		142.0 * DPIScale(), 185.0 * DPIScale(),
+		44.0 * DPIScale(), 21.0 * DPIScale(),
+		hWnd, (HMENU)RANDOMINTERVALENTER, hInstance, NULL
+	);
+	SendMessage(randomIntervalEnter, EM_SETLIMITTEXT, 3, 0);
+
+	holdTimeEnter = CreateWindowEx(
+		WS_EX_CLIENTEDGE, "EDIT", 0,
+		WS_TABSTOP | WS_CHILD | ES_NUMBER | ES_CENTER,
+		214.0 * DPIScale(), 185.0 * DPIScale(),
+		44.0 * DPIScale(), 21.0 * DPIScale(),
+		hWnd, (HMENU)HOLDTIMEENTER, hInstance, NULL
+	);
+	SendMessage(holdTimeEnter, EM_SETLIMITTEXT, 3, 0);
+
+	if (isWindowsXPLater())
+	{
+		SendMessage(randomIntervalEnter, EM_SETCUEBANNER, (WPARAM)FALSE, (LPARAM)L"±ms");
+		SendMessage(holdTimeEnter, EM_SETCUEBANNER, (WPARAM)FALSE, (LPARAM)L"ms");
+	}
+	else
+	{
+		SetWindowText(randomIntervalEnter, "0");
+		SetWindowText(holdTimeEnter, "0");
+	}
+
 }
 
 

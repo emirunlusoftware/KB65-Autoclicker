@@ -75,6 +75,9 @@ void SettingsPage(bool isVisible)
 	ShowWindow(settingsFrame, isVisible);
 	ShowWindow(themeSelect, isVisible);
 	ShowWindow(themesList, isVisible);
+	ShowWindow(randIntervalAndHoldTimeFrame, isVisible);
+	ShowWindow(randomIntervalEnter, isVisible);
+	ShowWindow(holdTimeEnter, isVisible);
 	ShowWindow(minimizeOnTray, isVisible);
 	ShowWindow(alwaysOnTop, isVisible);
 	ShowWindow(debugHotkeyButton, isVisible);

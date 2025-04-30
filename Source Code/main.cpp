@@ -1,16 +1,17 @@
 #include "main.h"
 #include <shellapi.h>
+#include <time.h>
 
 
 
 
 
-HINSTANCE hInst = GetModuleHandle(NULL);
-PAINTSTRUCT ps;
-HWND hWnd;
 HDC hdc;
-WNDCLASSEX wcex = {0};
+HINSTANCE hInst = GetModuleHandle(NULL);
+HWND hWnd;
 OSVERSIONINFO winver;
+PAINTSTRUCT ps;
+WNDCLASSEX wcex = {0};
 
 
 UINT
@@ -33,6 +34,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			winver.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
 			GetVersionEx(&winver);
 
+			srand(time(NULL));
 			LoadingEntries(hWnd, hInst);
 			LoadingButtons(hWnd, hInst);
 			LoadingFonts(hWnd);
@@ -215,10 +217,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					KillTimer(hWnd, AUTOCLICKERCOUNTDOWN);
 					KillTimer(hWnd, AUTOCLICKER_TICKTOCK);
 
+					if (holdingInProgress == 1)
+					{
+						KillTimer(hWnd, HOLDTIME);
+						PostMessage(hWnd, STOP_CLICKERHOLDTIME, 0, 0);
+					}
+
 					if (GetRepeatTimer(hWnd, AUTOCLICKER) == 1)
 						break;
 
-					SetAppTimer(hWnd, TIMERAUTOCLICKER);
+					if (SetAppTimer(hWnd, TIMERAUTOCLICKER) == 1)
+						MessageBox(hWnd, "Mouse Timer must be under Random Interval and Hold Time.", "Error", MB_ICONEXCLAMATION);
 					break;
 				}
 
@@ -231,14 +240,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					if (GetRepeatTimer(hWnd, AUTOPRESSER))
 						break;
 
-					SetAppTimer(hWnd, TIMERAUTOPRESSER);
+					if (SetAppTimer(hWnd, TIMERAUTOPRESSER) == 1)
+						MessageBox(hWnd, "Keyboard Timer must be under Random Interval.", "Error", MB_ICONEXCLAMATION);
 					break;
 				}
 
 
 				case INFOBUTTON:
 				{
-					ShellExecute(NULL, "open", "https://raw.githubusercontent.com/emirunlusoftware/KB65-Autoclicker/b49ea0cf42fdcb897e400ffea852051b22bb5d23/KB65%20Autoclicker%20User%20Guide.pdf", NULL, NULL, SW_SHOWNORMAL);
+					ShellExecute(NULL, "open", "https://raw.githubusercontent.com/emirunlusoftware/KB65-Autoclicker/9ec821d3880aa3cee98261dea9d88c6668b1b5b1/KB65%20Autoclicker%20User%20Guide.pdf", NULL, NULL, SW_SHOWNORMAL);
 					break;
 				}
 
@@ -343,24 +353,40 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					KillTimer(hWnd, AUTOPRESSERCOUNTDOWN);
 					KillTimer(hWnd, AUTOPRESSER_TICKTOCK);
 
+					if (holdingInProgress == 1)
+					{
+						KillTimer(hWnd, HOLDTIME);
+						PostMessage(hWnd, STOP_CLICKERHOLDTIME, 0, 0);
+					}
+
 					if (GetRepeatTimer(hWnd, AUTOCLICKER) || GetRepeatTimer(hWnd, AUTOPRESSER))
 						break;
 
-					SetAppTimer(hWnd, TIMERAUTOCLICKER);
-					SetAppTimer(hWnd, TIMERAUTOPRESSER);
+					if (SetAppTimer(hWnd, TIMERAUTOCLICKER) == 1)
+						MessageBox(hWnd, "Mouse Timer must be under Random Interval and Hold Time.", "Error", MB_ICONEXCLAMATION);
+					if (SetAppTimer(hWnd, TIMERAUTOPRESSER) == 1)
+						MessageBox(hWnd, "Keyboard Timer must be under Random Interval.", "Error", MB_ICONEXCLAMATION);
 
 					break;
 				}
 
+				// Activate Autoclicker by Hotkey
 				if ((wParam == MOUSECLICKHOTKEY) && mouseActive)
 				{
 					KillTimer(hWnd, AUTOCLICKERCOUNTDOWN);
 					KillTimer(hWnd, AUTOCLICKER_TICKTOCK);
 
+					if (holdingInProgress == 1)
+					{
+						KillTimer(hWnd, HOLDTIME);
+						PostMessage(hWnd, STOP_CLICKERHOLDTIME, 0, 0);
+					}
+
 					if (GetRepeatTimer(hWnd, AUTOCLICKER))
 						break;
 
-					SetAppTimer(hWnd, TIMERAUTOCLICKER);
+					if (SetAppTimer(hWnd, TIMERAUTOCLICKER) == 1)
+						MessageBox(hWnd, "Mouse Timer must be under Random Interval and Hold Time.", "Error", MB_ICONEXCLAMATION);
 					break;
 				}
 
@@ -372,7 +398,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					if (GetRepeatTimer(hWnd, AUTOPRESSER))
 						break;
 
-					SetAppTimer(hWnd, TIMERAUTOPRESSER);
+					if (SetAppTimer(hWnd, TIMERAUTOPRESSER) == 1)
+						MessageBox(hWnd, "Keyboard Timer must be under Random Interval.", "Error", MB_ICONEXCLAMATION);
 					break;
 				}
 			}
@@ -386,7 +413,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			if (wParam == AUTOCLICKERTIMER)
 			{
-				StartAutoClicker(clickType, mouseButton);
+				StartAutoClicker(hWnd, clickType, mouseButton);
+
+				if (randIntervalEditValue != 0)
+				{
+					KillTimer(hWnd, AUTOCLICKERTIMER);
+					SetTimer(hWnd, AUTOCLICKERTIMER, mouseTimerDuration + RandomInterval(), NULL);
+				}
+
 				RepeatTimes(hWnd, AUTOCLICKER);
 			}
 			if (wParam == AUTOCLICKERCOUNTDOWN)
@@ -404,6 +438,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			if (wParam == AUTOPRESSERTIMER)
 			{
 				StartAutoPresser(keyboardKey);
+
+				if (randIntervalEditValue != 0)
+				{
+					KillTimer(hWnd, AUTOPRESSERTIMER);
+					SetTimer(hWnd, AUTOPRESSERTIMER, keyboardTimerDuration + RandomInterval(), NULL);
+				}
+
 				RepeatTimes(hWnd, AUTOPRESSER);
 			}
 			if (wParam == AUTOPRESSERCOUNTDOWN)
@@ -451,11 +492,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			{
 				switch(option)
 				{
+					/*
+						End the program by pressing ESC. 
+						You don't need to kill timers because
+						when the timers running, ESC cannot end the program.
+						So, just delete objects that we created.
+					*/
 					case MAINPAGE:
-						KillTimer(hWnd, AUTOCLICKERTIMER);
-						KillTimer(hWnd, AUTOPRESSERTIMER);
+					{
+						if (themeColor != (HBRUSH)(COLOR_BTNSHADOW))
+							DeleteObject(themeColor);
+
+						DeleteObject(wcex.hbrBackground);
+						DeleteObject(globalFont);
 						PostQuitMessage(0);
-						break;
+						return 0;
+					}
 
 					case SETTINGSPAGE:
 						option = MAINPAGE;
@@ -490,6 +542,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 
 
+
+		// Mouse with Hold Time Trigger
+		case CONT_CLICKERHOLDTIME:
+			ContinueClickerHoldTime();
+			break;
+
+		// Mouse with Hold Time Stopper
+		case STOP_CLICKERHOLDTIME:
+			StopClickerHoldTime();
+			break;
+
+
+
 		case WM_CLOSE:
 		{
 			if (mouseHotkeySelected && keyboardHotkeySelected)
@@ -506,6 +571,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			KillTimer(hWnd, AUTOPRESSERTIMER);
 			KillTimer(hWnd, AUTOPRESSERCOUNTDOWN);
 			KillTimer(hWnd, AUTOPRESSER_TICKTOCK);
+			KillTimer(hWnd, HOLDTIME);
 
 			if (themeColor != (HBRUSH)(COLOR_BTNSHADOW))
 				DeleteObject(themeColor);

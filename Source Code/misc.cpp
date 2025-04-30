@@ -32,6 +32,14 @@ bool isWindowsNT()
 
 
 
+bool isWindowsXPLater()
+{
+	// Settings like EM_SETCUEBANNER aren't supported on Windows 2000
+    return (winver.dwMajorVersion >= 5 && winver.dwMinorVersion >= 1);
+}
+
+
+
 void ActiveAppearance(HWND hWnd, int modType, bool isEnabled, int specParam)
 {
 	for (idNumber = (modType == AUTOCLICKER ? MOUSECLICKTIMER : KEYBOARDPRESSTIMER);
