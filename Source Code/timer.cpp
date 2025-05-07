@@ -455,11 +455,13 @@ bool GetRandomIntervalHoldTime(int durationOfMods, int modType)
 	switch(modType)
 	{
 		case AUTOCLICKER:
-			if (durationOfMods <= randIntervalEditValue + holdTimeEditValue)
+			if ((durationOfMods <= randIntervalEditValue + holdTimeEditValue)
+				&& !(durationOfMods == 0 && randIntervalEditValue == 0 && holdTimeEditValue == 0))
 				return 1;
 
 		case AUTOPRESSER:
-			if (durationOfMods <= randIntervalEditValue)
+			if ((durationOfMods <= randIntervalEditValue)
+				&& !(durationOfMods == 0 && randIntervalEditValue == 0))
 				return 1;
 	}
 	return 0;
