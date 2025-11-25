@@ -1,5 +1,4 @@
-#include "main.h"
-#include <stdio.h>
+#include "KB65 Autoclicker.h"
 #include <ctype.h>
 #include <wctype.h>
 
@@ -7,22 +6,24 @@
 
 
 
-int idNumber;
-HWND hWndGet;
-LONG_PTR hotkeyButtonStyle, debugButtonStyle;
+bool
+mouseActive = true,
+keyboardActive = false;
 
 
-float DPIScale()
+
+int DPIScale(int value)
 {
-	HDC DPIhdc = GetDC(NULL);
-	int dpi = GetDeviceCaps(DPIhdc, LOGPIXELSX);
-	ReleaseDC(NULL, DPIhdc);
+	HDC hdc = GetDC(NULL);
+	int dpi = GetDeviceCaps(hdc, LOGPIXELSX);
+	ReleaseDC(NULL, hdc);
 
-	return (dpi / 96.0f);
+	return (int)(value * (dpi / 96.0f));
 }
 
 
 
+OSVERSIONINFO winver;
 bool isWindowsNT()
 {
 	// • true [Windows NT (2000/XP/Vista etc.)]
@@ -35,106 +36,117 @@ bool isWindowsNT()
 bool isWindowsXPLater()
 {
 	// Settings like EM_SETCUEBANNER aren't supported on Windows 2000
-    return (winver.dwMajorVersion >= 5 && winver.dwMinorVersion >= 1);
+	return (winver.dwMajorVersion >= 5 && winver.dwMinorVersion >= 1);
 }
 
 
 
-void ActiveAppearance(HWND hWnd, int modType, bool isEnabled, int specParam)
+void RealignZOrderChain(HWND hWnd)
 {
-	for (idNumber = (modType == AUTOCLICKER ? MOUSECLICKTIMER : KEYBOARDPRESSTIMER);
-		idNumber < (modType == AUTOCLICKER ? MOUSECLICKHOTKEYBUTTON: KEYBOARDPRESSHOTKEYBUTTON);
-		++idNumber)
+	HWND hWndGetPrev = HWND_BOTTOM;
+
+	for (int id = ACTIVATEMOUSE_VIA_TRAY; id <= BACKTOMAINBUTTON; id++)
 	{
-		hWndGet = GetDlgItem(hWnd, idNumber);
+		HWND hWndGet = GetDlgItem(hWnd, id);
+		if (hWndGet != NULL)
+		{
+			SetWindowPos(hWndGet, hWndGetPrev, 0, 0, 0, 0,
+				SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+			hWndGetPrev = hWndGet;
+		}
+	}
+}
+
+
+
+void ActiveAppearance(HWND hWnd, int mod, bool isEnabled)
+{
+	for (int idNumber = (mod == AUTOCLICKER ? MOUSETIMERFRAME : KEYBOARDTIMERFRAME);
+		idNumber < (mod == AUTOCLICKER ? MOUSECLICKHOTKEYBUTTON: KEYBOARDPRESSHOTKEYBUTTON);
+		idNumber++)
+	{
+		HWND hWndGet = GetDlgItem(hWnd, idNumber);
 
 		if (hWndGet != NULL)
 			EnableWindow(hWndGet, isEnabled);
 	}
+	EnableWindow(mod == AUTOCLICKER ? mouseClickStart : keyboardPressStart, isEnabled);
 
-	EnableWindow(modType == AUTOCLICKER ? mouseClickStart : keyboardPressStart, isEnabled);
-	EnableWindow(modType == AUTOCLICKER ? mouseClickStop : keyboardPressStop, isEnabled);
-	EnableWindow(mouseHotkeyButton, specParam ? HIDE : SHOW);
-	EnableWindow(keyboardHotkeyButton, specParam ? HIDE : SHOW);
-	if (modType == AUTOCLICKER)
-	{
-		EnableWindow(mouseClickStart, isEnabled);
-		EnableWindow(mouseClickStop, HIDE);
-	}
-	else
-	{
-		EnableWindow(keyboardPressStart, isEnabled);
-		EnableWindow(keyboardPressStop, HIDE);
-	}
-}
-
-
-
-void HotkeySelectionAppearance(HWND hWnd, int mouseActive, int keyboardActive, bool isEnabled)
-{
-	EnableWindow(activateMouseCheckBox, isEnabled);
-	EnableWindow(loadScriptsButton, isEnabled);
-	EnableWindow(saveScriptsButton, isEnabled);
-	for (idNumber = MOUSECLICKTIMER; idNumber <= MOUSECLICKSTARTBUTTON; ++idNumber)
-	{
-		hWndGet = GetDlgItem(hWnd, idNumber);
-
-		if (hWndGet != NULL)
-			EnableWindow(hWndGet, !isEnabled ? HIDE : mouseActive);
-	}
-	EnableWindow(keyboardHotkeyButton, isEnabled);
-
-	EnableWindow(activateKeyboardCheckBox, isEnabled);
-	for (idNumber = KEYBOARDPRESSTIMER; idNumber <= KEYBOARDPRESSSTARTBUTTON; ++idNumber)
-	{
-		hWndGet = GetDlgItem(hWnd, idNumber);
-
-		if (hWndGet != NULL)
-			EnableWindow(hWndGet, !isEnabled ? HIDE : keyboardActive);
-	}
-	EnableWindow(mouseHotkeyButton, isEnabled);
+	if (IsWindowEnabled(mod == AUTOCLICKER ? mouseClickStop : keyboardPressStop))
+		EnableWindow(mod == AUTOCLICKER ? mouseClickStop : keyboardPressStop, HIDE);
 }
 
 
 
 void HotkeyButtonAppearance(HWND hotkeyButton, bool isEnabled)
 {
-	hotkeyButtonStyle = GetWindowLongPtr(hotkeyButton, GWL_STYLE);
-	!isEnabled
-		? hotkeyButtonStyle |= (WS_THICKFRAME | WS_VSCROLL)
-		: hotkeyButtonStyle &= ~(WS_THICKFRAME | WS_VSCROLL);
+	LONG_PTR hotkeyButtonStyle = GetWindowLongPtr(hotkeyButton, GWL_STYLE);
+	isEnabled
+		? hotkeyButtonStyle &= ~(WS_THICKFRAME | WS_VSCROLL)
+		: hotkeyButtonStyle |= (WS_THICKFRAME | WS_VSCROLL);
 
 	SetWindowLongPtr(hotkeyButton, GWL_STYLE, hotkeyButtonStyle);
-	SetWindowPos(hotkeyButton, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_FRAMECHANGED);
+	SetWindowPos(hotkeyButton, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+}
+
+
+
+void HotkeySelectionAppearance(HWND hWnd, WORD hotkeyButtonId, bool isEnabled)
+{
+	EnableWindow(activateMouseCheckBox, isEnabled);
+	EnableWindow(activateKeyboardCheckBox, isEnabled);
+	EnableWindow(loadScriptsButton, isEnabled);
+	EnableWindow(saveScriptsButton, isEnabled);
+
+	for (int idNumber = MOUSETIMERFRAME; idNumber <= MOUSECLICKSTARTBUTTON; idNumber++)
+	{
+		HWND hWndGet = GetDlgItem(hWnd, idNumber);
+
+		if (hWndGet != NULL)
+			EnableWindow(hWndGet, !isEnabled ? HIDE : mouseActive);
+	}
+	for (int idNumber = KEYBOARDTIMERFRAME; idNumber <= KEYBOARDPRESSSTARTBUTTON; idNumber++)
+	{
+		HWND hWndGet = GetDlgItem(hWnd, idNumber);
+
+		if (hWndGet != NULL)
+			EnableWindow(hWndGet, !isEnabled ? HIDE : keyboardActive);
+	}
+
+	EnableWindow(mouseHotkeyButton, isEnabled);
+	EnableWindow(keyboardHotkeyButton, isEnabled);
+
+	if (hotkeyButtonId == MOUSECLICKHOTKEYBUTTON)
+		HotkeyButtonAppearance(mouseHotkeyButton, isEnabled);
+	else if (hotkeyButtonId == KEYBOARDPRESSHOTKEYBUTTON)
+		HotkeyButtonAppearance(keyboardHotkeyButton, isEnabled);
 }
 
 
 
 void DebugAppearance(HWND hWnd, bool isEnabled)
 {
-	for (idNumber = SETTINGSFRAME; idNumber <= BACKTOMAINBUTTON; ++idNumber)
+	for (int idNumber = SETTINGSFRAME; idNumber <= BACKTOMAINBUTTON; idNumber++)
 	{
-		hWndGet = GetDlgItem(hWnd, idNumber);
+		HWND hWndGet = GetDlgItem(hWnd, idNumber);
 
 		if (hWndGet != NULL)
-			EnableWindow(hWndGet, !isEnabled ? HIDE : SHOW);
+			EnableWindow(hWndGet, isEnabled ? SHOW : HIDE);
 	}
 
-	debugButtonStyle = GetWindowLongPtr(debugHotkeyButton, GWL_STYLE);
-	!isEnabled
-		? debugButtonStyle |= (WS_THICKFRAME | WS_VSCROLL)
-		: debugButtonStyle &= ~(WS_THICKFRAME | WS_VSCROLL);
+	LONG_PTR debugButtonStyle = GetWindowLongPtr(debugHotkeyButton, GWL_STYLE);
+	isEnabled
+		? debugButtonStyle &= ~(WS_THICKFRAME | WS_VSCROLL)
+		: debugButtonStyle |= (WS_THICKFRAME | WS_VSCROLL);
 
 	SetWindowLongPtr(debugHotkeyButton, GWL_STYLE, debugButtonStyle);
-	SetWindowPos(debugHotkeyButton, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_FRAMECHANGED);
+	SetWindowPos(debugHotkeyButton, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
 }
 
 
 
 void PopulateComboBox(HWND keyboardSelectedKey, HKL hkl)
 {
-	BYTE keyState[256] = { 0 };
-
 	const wchar_t* otherKeys[] =
 	{
 		L"F1", L"F2", L"F3", L"F4", L"F5", L"F6",
@@ -165,35 +177,38 @@ void PopulateComboBox(HWND keyboardSelectedKey, HKL hkl)
 		VK_UP, VK_DOWN, VK_LEFT, VK_RIGHT, VK_ESCAPE, VK_TAB, VK_CAPITAL, VK_SPACE, VK_RETURN, VK_BACK // Arrow keys and other controls
 	};
 
+
+	BYTE keyState[256] = {0};
+
 	if (isWindowsNT())
 	{
 		// 1) Populate with digits and letters
-		for (UINT vk = '0'; vk <= 'Z'; ++vk)
+		for (UINT vk = '0'; vk <= 'Z'; vk++)
 		{
 			WCHAR buffer[2] = { 0 };
 			int result = ToUnicodeEx(vk, MapVirtualKey(vk, 0), keyState, buffer, 2, 0, hkl);
 			if (result > 0)
 			{
-				WCHAR keyAlnumStr[2] = { buffer[0], 0 };
+				WCHAR keyAlnumStr[2] = { buffer[0], '\0' };
 				LRESULT index = SendMessageW(keyboardSelectedKey, CB_ADDSTRING, 0, (LPARAM)keyAlnumStr);
 				SendMessageW(keyboardSelectedKey, CB_SETITEMDATA, (WPARAM)index, (LPARAM)vk); // Embed vkCode to current index.
 			}
 		}
 
 		// 2) Populate with special OEM letters (Þ, Ç, Ð etc.)
-		for (UINT vk = 0xBA; vk <= 0xE2; ++vk)
+		for (UINT vk = 0xBA; vk <= 0xE2; vk++)
 		{
 			WCHAR buffer[2] = { 0 };
 			int result = ToUnicodeEx(vk, MapVirtualKey(vk, 0), keyState, buffer, 2, 0, hkl);
-			if (result > 0 )
+			if (result > 0)
 			{
-				WCHAR keyOEMCharStr[2] = { buffer[0], 0 };
+				WCHAR keyOEMCharStr[2] = { buffer[0], '\0' };
 				LRESULT index = SendMessageW(keyboardSelectedKey, CB_ADDSTRING, 0, (LPARAM)keyOEMCharStr);
 				SendMessageW(keyboardSelectedKey, CB_SETITEMDATA, (WPARAM)index, (LPARAM)vk); // Embed vkCode data to current index.
 			}
 		}
 
-		for (int arrIndex = 0; arrIndex < (sizeof(otherKeys)/sizeof(otherKeys[0])); ++arrIndex)
+		for (int arrIndex = 0; arrIndex < (sizeof(otherKeys)/sizeof(otherKeys[0])); arrIndex++)
 		{
 			LRESULT index = SendMessageW(keyboardSelectedKey, CB_ADDSTRING, 0, (LPARAM)otherKeys[arrIndex]);
 			SendMessageW(keyboardSelectedKey, CB_SETITEMDATA, (WPARAM)index, (LPARAM)otherKeysVkCodes[arrIndex]); // Embed vkCode data to current index.
@@ -203,34 +218,35 @@ void PopulateComboBox(HWND keyboardSelectedKey, HKL hkl)
 	else // Windows 98/ME
 	{
 		// 1) Populate with digits and letters
-		for (UINT vk = '0'; vk <= 'Z'; ++vk)
+		for (UINT vk = '0'; vk <= 'Z'; vk++)
 		{
 			WORD buffer[2] = { 0 };
 			int result = ToAsciiEx(vk, MapVirtualKey(vk, 0), keyState, buffer, 0, hkl);
 			if (result > 0)
 			{
-				char keyAlnumStr[2] = { buffer[0], 0 };
+				char keyAlnumStr[2] = { buffer[0], '\0' };
 				LRESULT index = SendMessageA(keyboardSelectedKey, CB_ADDSTRING, 0, (LPARAM)keyAlnumStr);
 				SendMessageA(keyboardSelectedKey, CB_SETITEMDATA, (WPARAM)index, (LPARAM)vk); // Embed vkCode to current index.
 			}
 		}
 
 		// 2) Populate with special OEM letters (Þ, Ç, Ð etc.)
-		for (UINT vk = 0xBA; vk <= 0xE2; ++vk)
+		for (UINT vk = 0xBA; vk <= 0xE2; vk++)
 		{
 			WORD buffer[2] = { 0 };
 			int result = ToAsciiEx(vk, MapVirtualKey(vk, 0), keyState, buffer, 0, hkl);
 			if (result > 0)
 			{
-				char keyOEMCharStr[2] = { buffer[0], 0 };
+				char keyOEMCharStr[2] = { buffer[0], '\0' };
 				LRESULT index = SendMessageA(keyboardSelectedKey, CB_ADDSTRING, 0, (LPARAM)keyOEMCharStr);
 				SendMessageA(keyboardSelectedKey, CB_SETITEMDATA, (WPARAM)index, (LPARAM)vk); // Embed vkCode data to current index.
 			}
 		}
 
 		char otherAsciiKeysArray[20];
-		for (int arrIndex = 0; arrIndex < (sizeof(otherKeys)/sizeof(otherKeys[0])); ++arrIndex)
+		for (int arrIndex = 0; arrIndex < (sizeof(otherKeys)/sizeof(otherKeys[0])); arrIndex++)
 		{
+			wcstombs(otherAsciiKeysArray, otherKeys[arrIndex], sizeof(otherAsciiKeysArray));
 			wcstombs(otherAsciiKeysArray, otherKeys[arrIndex], sizeof(otherAsciiKeysArray));
 			LRESULT index = SendMessageA(keyboardSelectedKey, CB_ADDSTRING, 0, (LPARAM)otherAsciiKeysArray);
 			SendMessageA(keyboardSelectedKey, CB_SETITEMDATA, (WPARAM)index, (LPARAM)otherKeysVkCodes[arrIndex]); // Embed vkCode data to current index.

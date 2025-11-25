@@ -1,25 +1,25 @@
-#include "main.h"
-#include <stdio.h>
+#include "KB65 Autoclicker.h"
 
 
 
 
 
-static int
-currentKey = 0;
+int
+mouseButton	= 0,
+clickType = SINGLE;
 
 UINT
-mouseButton	= MOUSEEVENTF_LEFTDOWN,
 mouseSpecialKey = 0,
 mouseHotkey = VK_F5,
-clickType = SINGLE,
 
 keyboardKey	= VK_RETURN,
 keyboardHotkey = VK_F6,
 keyboardSpecialKey = 0,
-keyboardHotkeyTemp = 0;
+keyboardHotkeyTemp = 0,
+currentKey = 0;
 
 UINT *specialKey = 0;
+LRESULT isKeyboardHoldMode = false;
 
 char
 *mouseHotkeyTextA = "F5",
@@ -28,8 +28,7 @@ char
 *keyboardHotkeySpecialTextA = "NULL",
 *hotkeyTextA,
 *hotkeySpecialTextA,
-hotkeyAsciiBuffer[30],
-debugBuffer[20];
+hotkeyAsciiBuffer[30];
 
 WCHAR
 *mouseHotkeyTextW = L"F5",
@@ -42,13 +41,12 @@ hotkeyUnicodeBuffer[30];
 
 static bool keysEqual = false;
 
-BYTE keyState[256];
-
 
 static WCHAR defaultChar[3];
 wchar_t* GetUnicodeChar(UINT vk)
 {
 	static WCHAR defaultUnicodeHotkey[2];
+	BYTE keyState[256];
 	GetKeyboardState(keyState);
 	int controlKeysToClear[] =
 	{
@@ -73,6 +71,7 @@ static WORD win98Char[3];
 char* GetAsciiChar(UINT vk)
 {
 	static char defaultAsciiHotkey[2];
+	BYTE keyState[256];
 	GetKeyboardState(keyState);
 	int controlKeysToClear[] =
 	{
@@ -96,16 +95,12 @@ char* GetAsciiChar(UINT vk)
 
 void GetHotkey(HWND hWnd, UINT *hotkey, bool *hotkeySelected, int selectMod)
 {
-	if (selectMod == HOTKEYAUTOCLICKER)
-	{
-		specialKey = &mouseSpecialKey;
-		*specialKey = 0;
-	}
-	else
-	{
-		specialKey = &keyboardSpecialKey;
-		*specialKey = 0;
-	}
+	*hotkeySelected = FALSE;
+	specialKey = (selectMod == HOTKEYAUTOCLICKER)
+		? &mouseSpecialKey
+		: &keyboardSpecialKey;
+	*specialKey = 0;
+
 
 	MSG hotMsg;
 	while (!(*hotkeySelected))
@@ -116,7 +111,7 @@ void GetHotkey(HWND hWnd, UINT *hotkey, bool *hotkeySelected, int selectMod)
 			DispatchMessage(&hotMsg);
 		}
 
-		for (currentKey = 0x08; currentKey < 0xFF; ++currentKey)
+		for (currentKey = 0x08; currentKey < 0xFF; currentKey++)
 		{
 			// If you press a button
 			if (GetAsyncKeyState(currentKey) & 0x8000)
@@ -171,6 +166,10 @@ void GetHotkey(HWND hWnd, UINT *hotkey, bool *hotkeySelected, int selectMod)
 							hotkeySpecialTextW = L"ALT";
 							SetWindowText(selectMod == HOTKEYAUTOCLICKER ? mouseHotkeyButton : keyboardHotkeyButton, "ALT + ?");
 							continue;
+
+
+						default:
+							break;
 					}
 
 
@@ -499,11 +498,18 @@ void GetHotkey(HWND hWnd, UINT *hotkey, bool *hotkeySelected, int selectMod)
 	{
 		keysEqual = true;
 		keyboardHotkeyTemp = mouseHotkey;
-		UnregisterHotKey(hWnd, KEYBOARDPRESSHOTKEY);
-		RegisterHotKey(hWnd,
-		MOUSECLICKHOTKEY,
-		*specialKey,
-		*hotkey);
+		if (mouseActive)
+		{
+			UnregisterHotKey(hWnd, KEYBOARDPRESSHOTKEY);
+			UnregisterHotKey(hWnd, MOUSECLICKHOTKEY);
+			RegisterHotKey(hWnd, MOUSECLICKHOTKEY, *specialKey, *hotkey);
+		}
+		else
+		{
+			UnregisterHotKey(hWnd, MOUSECLICKHOTKEY);
+			UnregisterHotKey(hWnd, KEYBOARDPRESSHOTKEY);
+			RegisterHotKey(hWnd, KEYBOARDPRESSHOTKEY, *specialKey, *hotkey);
+		}
 	}
 	else
 	{
@@ -516,6 +522,7 @@ void GetHotkey(HWND hWnd, UINT *hotkey, bool *hotkeySelected, int selectMod)
 			keysEqual = false;
 		}
 
+		UnregisterHotKey(hWnd, selectMod == HOTKEYAUTOCLICKER ? MOUSECLICKHOTKEY : KEYBOARDPRESSHOTKEY);
 		RegisterHotKey(hWnd,
 			selectMod == HOTKEYAUTOCLICKER ? MOUSECLICKHOTKEY : KEYBOARDPRESSHOTKEY,
 			*specialKey,
@@ -525,7 +532,7 @@ void GetHotkey(HWND hWnd, UINT *hotkey, bool *hotkeySelected, int selectMod)
 
 
 
-void LoadHotkey(HWND hWnd, UINT *specialKey, UINT *hotkey, int selectMod);
+void LoadHotkey(HWND hWnd, int hotkeyMod);
 
 void LoadHotkeyW(HWND hWnd, WCHAR *hotkeySpecTxtW, UINT *specialKey, WCHAR *hotkeyTxtW, UINT *hotkey, int selectMod)
 {
@@ -535,7 +542,9 @@ void LoadHotkeyW(HWND hWnd, WCHAR *hotkeySpecTxtW, UINT *specialKey, WCHAR *hotk
 		swprintf(hotkeyUnicodeBuffer,  L"Hotkey: %ls + %ls", hotkeySpecTxtW, hotkeyTxtW);
 
 	SetWindowTextW(selectMod == HOTKEYAUTOCLICKER ? mouseHotkeyButton : keyboardHotkeyButton, hotkeyUnicodeBuffer);
-	LoadHotkey(hWnd, specialKey, hotkey, selectMod);
+
+	if (selectMod == HOTKEYAUTOPRESSER)
+		LoadHotkey(hWnd, selectMod);
 }
 
 
@@ -548,36 +557,36 @@ void LoadHotkeyA(HWND hWnd, char *hotkeySpecTxtA, UINT *specialKey, char *hotkey
 		sprintf(hotkeyAsciiBuffer,  "Hotkey: %s + %s", hotkeySpecTxtA, hotkeyTxtA);
 
 	SetWindowTextA(selectMod == HOTKEYAUTOCLICKER ? mouseHotkeyButton : keyboardHotkeyButton, hotkeyAsciiBuffer);
-	LoadHotkey(hWnd, specialKey, hotkey, selectMod);
+
+	if (selectMod == HOTKEYAUTOPRESSER)
+		LoadHotkey(hWnd, selectMod);
 }
 
 
 
-void LoadHotkey(HWND hWnd, UINT *specialKey, UINT *hotkey, int selectMod)
+void LoadHotkey(HWND hWnd, int hotkeyMod)
 {
-	if (selectMod == HOTKEYAUTOPRESSER && (mouseHotkey == keyboardHotkey) && (mouseSpecialKey == keyboardSpecialKey))
+	if (hotkeyMod == HOTKEYAUTOPRESSER)
 	{
-		keyboardHotkeyTemp = mouseHotkey;
 		UnregisterHotKey(hWnd, KEYBOARDPRESSHOTKEY);
-		RegisterHotKey(hWnd, MOUSECLICKHOTKEY, *specialKey, *hotkey);
-	}
-	else
-	{
-		RegisterHotKey(hWnd,
-			selectMod == HOTKEYAUTOCLICKER ? MOUSECLICKHOTKEY : KEYBOARDPRESSHOTKEY,
-			*specialKey,
-			*hotkey);
+		UnregisterHotKey(hWnd, MOUSECLICKHOTKEY);
+		keysEqual = false;
+		if ((mouseHotkey == keyboardHotkey) && (mouseSpecialKey == keyboardSpecialKey))
+		{
+			keysEqual = true;
+			keyboardHotkeyTemp = mouseHotkey;
+		}
 	}
 }
-
 
 
 
 bool isKeyPressed;
 void GetDebugHexCode(HWND debugHotkeyButton)
 {
+	char debugBuffer[20] = {0};
 	isKeyPressed = false;
-	SetWindowText(debugHotkeyButton, "Select a Key");
+	SetWindowText(debugHotkeyButton, "Press any key");
 
 	while (!isKeyPressed)
 	{
@@ -592,9 +601,9 @@ void GetDebugHexCode(HWND debugHotkeyButton)
 		{
 			if (GetAsyncKeyState(keyHexNumber) & 0x8000)
 			{
-				sprintf(debugBuffer,  "You pressed: 0x%02x", keyHexNumber);
-				isKeyPressed = true;
-				break;
+				sprintf(debugBuffer,  "You pressed: 0x%02x", keyHexNumber); // The keycode has taken
+				isKeyPressed = true; // Now you can exit the while loop
+				break; // But first, you need to exit the for loop
 			}
 		}
 	}
@@ -606,47 +615,19 @@ void GetDebugHexCode(HWND debugHotkeyButton)
 
 int GetMouseButton(HWND mouseLmB)
 {
-	if (SendMessage(mouseLmB, CB_GETCURSEL, 0, 0) != CB_ERR)
-	{
-		char mouseButtonText[10];
-		SendMessage(mouseLmB, CB_GETLBTEXT, SendMessage(mouseLmB, CB_GETCURSEL, 0, 0), (LPARAM)mouseButtonText);
+	int mouseLmbIndex = (int)SendMessage(mouseLmB, CB_GETCURSEL, 0, 0);
 
-		if (strcmp(mouseButtonText, "Left") == 0)
-			return MOUSEEVENTF_LEFTDOWN;
-
-		else if (strcmp(mouseButtonText, "Middle") == 0)
-			return MOUSEEVENTF_MIDDLEDOWN;
-
-		else if (strcmp(mouseButtonText, "Right") == 0)
-			return MOUSEEVENTF_RIGHTDOWN;
-	}
-	// Default
-	return MOUSEEVENTF_LEFTDOWN;
+	// Send the obtained index. If there is an error, then send the first index (Left mouse button).
+	return (mouseLmbIndex != CB_ERR ? mouseLmbIndex : 0);
 }
 
-
-
-int GetMouseClickType(HWND mouseClickStartTypeParam)
+int GetMouseClickType(HWND mouseClickTypeWnd)
 {
-	if (SendMessage(mouseLmB, CB_GETCURSEL, 0, 0) != CB_ERR)
-	{
-		char mouseClickStartTypeText[16];
-		SendMessage(mouseClickStartTypeParam, CB_GETLBTEXT, SendMessage(mouseClickStartTypeParam, CB_GETCURSEL, 0, 0), (LPARAM)mouseClickStartTypeText);
+	int clickTypeIndex = (int)SendMessage(mouseClickTypeWnd, CB_GETCURSEL, 0, 0);
 
-		if (strcmp(mouseClickStartTypeText, "Single (x1)") == 0)
-			return 1;
-
-		else if (strcmp(mouseClickStartTypeText, "Double (x2)") == 0)
-			return 2;
-
-		else if (strcmp(mouseClickStartTypeText, "Xtra (x16)") == 0)
-			return 16;
-	}
-	// Default
-	return 1;
+	// Send the obtained index. If there is an error, then send the first index (Single click).
+	return (clickTypeIndex != CB_ERR ? clickTypeIndex : SINGLE);
 }
-
-
 
 UINT GetKeyboardKey(HWND keyboardSelectedKey)
 {
@@ -659,134 +640,159 @@ UINT GetKeyboardKey(HWND keyboardSelectedKey)
 }
 
 
-bool holdingInProgress = 0;
-VOID CALLBACK HoldTimeProc(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
+
+/*
+	FORMULA:
+	mouseEvent = 1 << (2 * mouseButton + 1);
+
+	if (mouseButton = 0)
+	1 << (2 * 0 + 1)
+	1 << 1
+	= 2 "MOUSEEVENTF_LEFTDOWN (0x02)"
+
+	else if (mouseButton = 1)
+	1 << (2 * 1 + 1)
+	1 << 1
+	= 8 "MOUSEEVENTF_RIGHTDOWN (0x08)"
+
+	else if (mouseButton = 2)
+	1 << (2 * 1 + 1)
+	1 << 1
+	= 32 "MOUSEEVENTF_MIDDLEDOWN (0x20)"
+*/
+void SingleClick()
 {
-	KillTimer(hWnd, HOLDTIME);
-	holdingInProgress = 0;
-	PostMessage(hWnd, CONT_CLICKERHOLDTIME, 0, 0);
+	int mouseEvent = 1 << (2 * mouseButton + 1);
+	INPUT mouseSingleClick[2] = {0};
+
+	mouseSingleClick[0].type = INPUT_MOUSE;
+	mouseSingleClick[1].type = INPUT_MOUSE;
+	mouseSingleClick[0].mi.dwFlags = mouseEvent;
+	mouseSingleClick[1].mi.dwFlags = mouseEvent * 2;
+
+	SendInput(2, mouseSingleClick, sizeof(INPUT));
 }
 
-void ContinueClickerHoldTime();
-UINT g_clickType, g_mouseButton;
-void StartAutoClicker(HWND hWnd, UINT clickType, UINT mouseButton)
+void DoubleClick()
 {
-	g_clickType = clickType;
-	g_mouseButton = mouseButton;
-	INPUT mouseClickStart[32] = {0};
+	int mouseEvent = 1 << (2 * mouseButton + 1);
+	INPUT mouseDoubleClick[4] = {0};
 
-	mouseClickStart[0].type = INPUT_MOUSE;
-	mouseClickStart[0].mi.dwFlags = mouseButton;
-
-	if (holdTimeEditValue != 0)
+	for (int index = 0; index < 4; index += 2)
 	{
-		holdingInProgress = 1;
-		SendInput(1, mouseClickStart, sizeof(INPUT));
-		SetTimer(hWnd, HOLDTIME, holdTimeEditValue, HoldTimeProc);
+		mouseDoubleClick[index].type = INPUT_MOUSE;
+		mouseDoubleClick[index].mi.dwFlags = mouseEvent;
+		mouseDoubleClick[index+1].type = INPUT_MOUSE;
+		mouseDoubleClick[index+1].mi.dwFlags = mouseEvent * 2;
 	}
-	else
+
+	SendInput(4, mouseDoubleClick, sizeof(INPUT));
+}
+
+void HoldMouse()
+{
+	int mouseEvent = 1 << (2 * mouseButton + 1);
+	INPUT mouseHold[1] = {0};
+
+	mouseHold[0].type = INPUT_MOUSE;
+	mouseHold[0].mi.dwFlags = mouseEvent;
+
+	SendInput(1, mouseHold, sizeof(INPUT));
+}
+
+void ReleaseMouse()
+{
+	int mouseEvent = 1 << (2 * mouseButton + 1);
+	INPUT mouseRelease[1] = {0};
+
+	mouseRelease[0].type = INPUT_MOUSE;
+	mouseRelease[0].mi.dwFlags = mouseEvent * 2;
+
+	SendInput(1, mouseRelease, sizeof(INPUT));
+}
+
+void StartPressing(UINT keyboardKey)
+{
+	INPUT keyboardPress[3] = {0};
+	int index = 0;
+
+	// ---Problem---
+	// Prevent to perform dangerous combinations like (CTRL + S, CTRL + W)
+	// when either CTRL/SHIFT/ALT is set as hotkey.
+	// ---Example---
+	// Hotkey: CTRL + H
+	// Keyboard Key: W
+	// Hotkey pressed and W is being pressed, but you didn't release the hotkey buttons (especially CTRL).
+	// Now the program performs CTRL + W combination, and boom!
+	// ---Solution---
+	// Send KEYEVENTF_KEYUP command for the control hotkey set by you.
+	if (keyboardSpecialKey != 0)
 	{
-		mouseClickStart[1].type = INPUT_MOUSE;
-		mouseClickStart[1].mi.dwFlags = mouseButton * 2;
-
-		switch (clickType)
+		keyboardPress[index].type = INPUT_KEYBOARD;
+		switch(keyboardSpecialKey)
 		{
-			case SINGLE:
-				SendInput(2, mouseClickStart, sizeof(INPUT));
+			case MOD_CONTROL:
+				keyboardPress[index].ki.wVk = VK_CONTROL;
 				break;
-
-			case DOUBLE:
-			{
-				mouseClickStart[2].type = INPUT_MOUSE;
-				mouseClickStart[2].mi.dwFlags = mouseButton;
-
-				mouseClickStart[3].type = INPUT_MOUSE;
-				mouseClickStart[3].mi.dwFlags = mouseButton * 2;
-
-				SendInput(clickType * 2, mouseClickStart, sizeof(INPUT));
+			case MOD_SHIFT:
+				keyboardPress[index].ki.wVk = VK_SHIFT;
 				break;
-			}
-
-			case XTRA:
-			{
-				for (int i = 2; i < sizeof(mouseClickStart)/sizeof(mouseClickStart[0]); i+=2)
-				{
-					mouseClickStart[i].type = INPUT_MOUSE;
-					mouseClickStart[i].mi.dwFlags = mouseButton;
-
-					mouseClickStart[i+1].type = INPUT_MOUSE;
-					mouseClickStart[i+1].mi.dwFlags = mouseButton * 2;
-				}
-				SendInput(clickType * 2, mouseClickStart, sizeof(INPUT));
+			case MOD_ALT:
+				keyboardPress[index].ki.wVk = VK_MENU;
 				break;
-			}
 		}
+		keyboardPress[index].ki.dwFlags = KEYEVENTF_KEYUP;
+		index++;
 	}
+
+
+	keyboardPress[index].type = INPUT_KEYBOARD;
+	keyboardPress[index].ki.wVk = static_cast<WORD>(keyboardKey);
+
+	keyboardPress[index+1].type = INPUT_KEYBOARD;
+	keyboardPress[index+1].ki.wVk = static_cast<WORD>(keyboardKey);
+	keyboardPress[index+1].ki.dwFlags = KEYEVENTF_KEYUP;
+
+	SendInput(index+2, keyboardPress, sizeof(INPUT));
 }
 
-void StopClickerHoldTime()
+void HoldKey()
 {
-	holdingInProgress = 0;
-	INPUT cancelledClick[1] = {0};
+	INPUT keyboardHold[2] = {0};
+	int index = 0;
 
-	cancelledClick[0].type = INPUT_MOUSE;
-	cancelledClick[0].mi.dwFlags = g_mouseButton * 2;
-	SendInput(1, cancelledClick, sizeof(INPUT));
-}
-
-void ContinueClickerHoldTime()
-{
-	INPUT mouseClickStart[32] = {0};
-
-	mouseClickStart[0].type = INPUT_MOUSE;
-	mouseClickStart[0].mi.dwFlags = g_mouseButton * 2;
-
-	switch (g_clickType)
+	if (keyboardSpecialKey != 0)
 	{
-		case SINGLE:
-			SendInput(1, mouseClickStart, sizeof(INPUT));
-			break;
-
-		case DOUBLE:
+		keyboardHold[index].type = INPUT_KEYBOARD;
+		switch(keyboardSpecialKey)
 		{
-			mouseClickStart[1].type = INPUT_MOUSE;
-			mouseClickStart[1].mi.dwFlags = g_mouseButton;
-
-			mouseClickStart[2].type = INPUT_MOUSE;
-			mouseClickStart[2].mi.dwFlags = g_mouseButton * 2;
-
-			SendInput((g_clickType * 2) - 1, mouseClickStart, sizeof(INPUT));
-			break;
+			case MOD_CONTROL:
+				keyboardHold[index].ki.wVk = VK_CONTROL;
+				break;
+			case MOD_SHIFT:
+				keyboardHold[index].ki.wVk = VK_SHIFT;
+				break;
+			case MOD_ALT:
+				keyboardHold[index].ki.wVk = VK_MENU;
+				break;
 		}
-
-		case XTRA:
-		{
-			for (int i = 1; i < sizeof(mouseClickStart)/sizeof(mouseClickStart[0]); i+=2)
-			{
-				mouseClickStart[i].type = INPUT_MOUSE;
-				mouseClickStart[i].mi.dwFlags = g_mouseButton;
-
-				mouseClickStart[i+1].type = INPUT_MOUSE;
-				mouseClickStart[i+1].mi.dwFlags = g_mouseButton * 2;
-			}
-			SendInput((g_clickType * 2) - 1, mouseClickStart, sizeof(INPUT));
-			break;
-		}
+		keyboardHold[index].ki.dwFlags = KEYEVENTF_KEYUP;
+		index++;
 	}
+	keyboardHold[index].type = INPUT_KEYBOARD;
+	keyboardHold[index].ki.wVk = static_cast<WORD>(keyboardKey);
+	keyboardHold[index].ki.dwFlags = 0;
+
+	SendInput(index+1, keyboardHold, sizeof(INPUT));
 }
 
-
-
-void StartAutoPresser(UINT keyboardKey)
+void ReleaseKey()
 {
-	INPUT keyboardPress[2] = {0, 0};
+	INPUT keyboardRelease[1] = {0};
 
-	keyboardPress[0].type = INPUT_KEYBOARD;
-	keyboardPress[0].ki.wVk = static_cast<WORD>(keyboardKey);
+	keyboardRelease[0].type = INPUT_KEYBOARD;
+	keyboardRelease[0].ki.wVk = static_cast<WORD>(keyboardKey);
+	keyboardRelease[0].ki.dwFlags = KEYEVENTF_KEYUP;
 
-	keyboardPress[1].type = INPUT_KEYBOARD;
-	keyboardPress[1].ki.wVk = static_cast<WORD>(keyboardKey);
-	keyboardPress[1].ki.dwFlags = KEYEVENTF_KEYUP;
-
-	SendInput(2, keyboardPress, sizeof(INPUT));
+	SendInput(1, keyboardRelease, sizeof(INPUT));
 }

@@ -1,39 +1,38 @@
-#include "main.h"
-#include <commctrl.h>
+#include "KB65 Autoclicker.h"
 
 
 
 
 
 HWND
-mouseClickTimer,
-mouseClickType,
-mouseClickRepeat,
+mouseTimerFrame,
+mouseClickTypeFrame,
+mouseClickRepeatFrame,
 mouseRepeatTimesEntry,
 mouseRepeatTimesSpin,
-mouseRepeatTimerHour,
-mouseRepeatTimerMinute,
-mouseRepeatTimerSecond,
+mouseCountdownHour,
+mouseCountdownMinute,
+mouseCountdownSecond,
 mouseEnterHour,
 mouseEnterMinute,
 mouseEnterSecond,
 mouseEnterMilliSecond,
 
-keyboardPressTimer,
-keyboardPressRepeat,
+keyboardTimerFrame,
+keyboardKeyFrame,
+keyboardPressRepeatFrame,
 keyboardRepeatTimesEntry,
 keyboardRepeatTimesSpin,
-keyboardRepeatTimerHour,
-keyboardRepeatTimerMinute,
-keyboardRepeatTimerSecond,
+keyboardCountdownHour,
+keyboardCountdownMinute,
+keyboardCountdownSecond,
 keyboardEnterHour,
 keyboardEnterMinute,
 keyboardEnterSecond,
 keyboardEnterMilliSecond,
-keyboardSelectKey,
 
 settingsFrame,
-themeSelect,
+selectThemeFrame,
 randIntervalAndHoldTimeFrame,
 randomIntervalEnter,
 holdTimeEnter;
@@ -41,20 +40,20 @@ holdTimeEnter;
 
 void AutoClickerEntries(HWND hWnd, HINSTANCE hInstance)
 {
-	mouseClickTimer = CreateWindowEx(
+	mouseTimerFrame = CreateWindowEx(
 		0, "BUTTON", "Mouse Timer",
-		BS_GROUPBOX | BS_CENTER | WS_VISIBLE | WS_CHILD,
-		5.0 * DPIScale(), 4.0 * DPIScale(),
-		120.0 * DPIScale(), 125.0 * DPIScale(),
-		hWnd, (HMENU)MOUSECLICKTIMER, hInstance, NULL
+		BS_GROUPBOX | BS_CENTER | WS_CHILD | WS_VISIBLE,
+		DPIScale(5), DPIScale(4),
+		DPIScale(120), DPIScale(125),
+		hWnd, (HMENU)MOUSETIMERFRAME, hInstance, NULL
 	);
 
 
 	mouseEnterHour = CreateWindowEx(
 		WS_EX_CLIENTEDGE, "EDIT", "0",
-		WS_VISIBLE | WS_TABSTOP | WS_CHILD | ES_NUMBER | ES_CENTER,
-		10.0 * DPIScale(), 27.0 * DPIScale(),
-		44.0 * DPIScale(), 22.0 * DPIScale(),
+		ES_NUMBER | ES_CENTER | WS_CHILD | WS_TABSTOP | WS_VISIBLE,
+		DPIScale(10), DPIScale(27),
+		DPIScale(44), DPIScale(22),
 		hWnd, (HMENU)MOUSEENTERHOUR, hInstance, NULL
 	);
 	SendMessage(mouseEnterHour, EM_SETLIMITTEXT, 3, 0);
@@ -62,9 +61,9 @@ void AutoClickerEntries(HWND hWnd, HINSTANCE hInstance)
 
 	mouseEnterMinute = CreateWindowEx(
 		WS_EX_CLIENTEDGE, "EDIT", "0",
-		WS_VISIBLE | WS_TABSTOP | WS_CHILD | ES_NUMBER | ES_CENTER,
-		10.0 * DPIScale(), 51.0 * DPIScale(),
-		44.0 * DPIScale(), 22.0 * DPIScale(),
+		ES_NUMBER | ES_CENTER | WS_CHILD | WS_TABSTOP | WS_VISIBLE,
+		DPIScale(10), DPIScale(51),
+		DPIScale(44), DPIScale(22),
 		hWnd, (HMENU)MOUSEENTERMINUTE, hInstance, NULL
 	);
 	SendMessage(mouseEnterMinute, EM_SETLIMITTEXT, 4, 0);
@@ -72,9 +71,9 @@ void AutoClickerEntries(HWND hWnd, HINSTANCE hInstance)
 
 	mouseEnterSecond = CreateWindowEx(
 		WS_EX_CLIENTEDGE, "EDIT", "1",
-		WS_VISIBLE | WS_TABSTOP | WS_CHILD | ES_NUMBER | ES_CENTER,
-		10.0 * DPIScale(), 75.0 * DPIScale(),
-		44.0 * DPIScale(), 22.0 * DPIScale(),
+		ES_NUMBER | ES_CENTER | WS_CHILD | WS_TABSTOP | WS_VISIBLE,
+		DPIScale(10), DPIScale(75),
+		DPIScale(44), DPIScale(22),
 		hWnd, (HMENU)MOUSEENTERSECOND, hInstance, NULL
 	);
 	SendMessage(mouseEnterSecond, EM_SETLIMITTEXT, 4, 0);
@@ -82,91 +81,91 @@ void AutoClickerEntries(HWND hWnd, HINSTANCE hInstance)
 
 	mouseEnterMilliSecond = CreateWindowEx(
 		WS_EX_CLIENTEDGE, "EDIT", "0",
-		WS_VISIBLE | WS_TABSTOP | WS_CHILD | ES_NUMBER | ES_CENTER,
-		10.0 * DPIScale(), 99.0 * DPIScale(),
-		44.0 * DPIScale(), 22.0 * DPIScale(),
+		ES_NUMBER | ES_CENTER | WS_CHILD | WS_TABSTOP | WS_VISIBLE,
+		DPIScale(10), DPIScale(99),
+		DPIScale(44), DPIScale(22),
 		hWnd, (HMENU)MOUSEENTERMILLISECOND, hInstance, NULL
 	);
 	SendMessage(mouseEnterMilliSecond, EM_SETLIMITTEXT, 4, 0);
 
 
-	mouseClickType = CreateWindowEx(
+	mouseClickTypeFrame = CreateWindowEx(
 		0, "BUTTON", "Clicker Type",
-		BS_GROUPBOX | BS_CENTER | WS_VISIBLE | WS_CHILD,
-		150.0 * DPIScale(), 45.0 * DPIScale(),
-		100.0 * DPIScale(), 82.0 * DPIScale(),
-		hWnd, (HMENU)MOUSECLICKTYPE, hInstance, NULL
+		BS_GROUPBOX | BS_CENTER | WS_CHILD | WS_VISIBLE,
+		DPIScale(150), DPIScale(39),
+		DPIScale(100), DPIScale(82),
+		hWnd, (HMENU)MOUSECLICKTYPEFRAME, hInstance, NULL
 	);
 
 
-	mouseClickRepeat = CreateWindowEx(
+	mouseClickRepeatFrame = CreateWindowEx(
 		0, "BUTTON", "Click Repeat",
-		BS_GROUPBOX | BS_CENTER | WS_VISIBLE | WS_CHILD,
-		264.0 * DPIScale(), 39.0 * DPIScale(),
-		101.0 * DPIScale(), 138.0 * DPIScale(),
-		hWnd, (HMENU)MOUSECLICKREPEAT, hInstance, NULL
+		BS_GROUPBOX | BS_CENTER | WS_CHILD | WS_VISIBLE,
+		DPIScale(264), DPIScale(39),
+		DPIScale(101), DPIScale(138),
+		hWnd, (HMENU)MOUSECLICKREPEATFRAME, hInstance, NULL
 	);
 
 
 	mouseRepeatTimesEntry = CreateWindowEx(
 		WS_EX_CLIENTEDGE, "EDIT", "5",
-		WS_VISIBLE | WS_TABSTOP |  WS_CHILD | ES_NUMBER | ES_CENTER,
-		292.0 * DPIScale(), 92.0 * DPIScale(),
-		64.0 * DPIScale(), 20.0 * DPIScale(),
+		ES_NUMBER | ES_CENTER | WS_CHILD | WS_TABSTOP | WS_VISIBLE,
+		DPIScale(292), DPIScale(92),
+		DPIScale(64), DPIScale(20),
 		hWnd, (HMENU)MOUSEREPEATTIMESENTRY, hInstance, NULL);
 	SendMessage(mouseRepeatTimesEntry, EM_SETLIMITTEXT, 5, 0);
 
 	mouseRepeatTimesSpin = CreateWindow(UPDOWN_CLASS, NULL,
-		WS_VISIBLE | WS_CHILD | UDS_ALIGNRIGHT | UDS_ARROWKEYS | UDS_SETBUDDYINT,
+		UDS_ALIGNRIGHT | UDS_ARROWKEYS | UDS_SETBUDDYINT | WS_CHILD | WS_VISIBLE,
 		0, 0, 0, 0,
 		hWnd, (HMENU)MOUSEREPEATTIMESSPIN, hInstance, NULL);
 	SendMessage(mouseRepeatTimesSpin, UDM_SETBUDDY, (WPARAM)mouseRepeatTimesEntry, 0);
 	SendMessage(mouseRepeatTimesSpin, UDM_SETRANGE32, 0, MAKELPARAM(65535, 0));
 
 
-	mouseRepeatTimerHour = CreateWindowEx(
+	mouseCountdownHour = CreateWindowEx(
 		WS_EX_CLIENTEDGE, "EDIT", "00",
-		WS_VISIBLE | WS_TABSTOP | WS_CHILD | ES_NUMBER | ES_CENTER,
-		270.0 * DPIScale(), 147.0 * DPIScale(),
-		25.0 * DPIScale(), 21.0 * DPIScale(),
-		hWnd, (HMENU)MOUSEREPEATTIMERHOUR, hInstance, NULL);
-	SendMessage(mouseRepeatTimerHour, EM_SETLIMITTEXT, 2, 0);
+		ES_NUMBER | ES_CENTER | WS_CHILD | WS_TABSTOP | WS_VISIBLE,
+		DPIScale(270), DPIScale(147),
+		DPIScale(25), DPIScale(21),
+		hWnd, (HMENU)MOUSEREPEATCOUNTDOWNHOUR, hInstance, NULL);
+	SendMessage(mouseCountdownHour, EM_SETLIMITTEXT, 2, 0);
 
-	mouseRepeatTimerMinute = CreateWindowEx(
+	mouseCountdownMinute = CreateWindowEx(
 		WS_EX_CLIENTEDGE, "EDIT", "00",
-		WS_VISIBLE | WS_TABSTOP | WS_CHILD | ES_NUMBER | ES_CENTER,
-		302.0 * DPIScale(), 147.0 * DPIScale(),
-		25.0 * DPIScale(), 21.0 * DPIScale(),
-		hWnd, (HMENU)MOUSEREPEATTIMERMINUTE, hInstance, NULL);
-	SendMessage(mouseRepeatTimerMinute, EM_SETLIMITTEXT, 2, 0);
+		ES_NUMBER | ES_CENTER | WS_CHILD | WS_TABSTOP | WS_VISIBLE,
+		DPIScale(302), DPIScale(147),
+		DPIScale(25), DPIScale(21),
+		hWnd, (HMENU)MOUSEREPEATCOUNTDOWNMINUTE, hInstance, NULL);
+	SendMessage(mouseCountdownMinute, EM_SETLIMITTEXT, 2, 0);
 
-	mouseRepeatTimerSecond = CreateWindowEx(
+	mouseCountdownSecond = CreateWindowEx(
 		WS_EX_CLIENTEDGE, "EDIT", "05",
-		WS_VISIBLE | WS_TABSTOP | WS_CHILD | ES_NUMBER | ES_CENTER,
-		334.0 * DPIScale(), 147.0 * DPIScale(),
-		25.0 * DPIScale(), 21.0 * DPIScale(),
-		hWnd, (HMENU)MOUSEREPEATTIMERSECOND, hInstance, NULL);
-	SendMessage(mouseRepeatTimerSecond, EM_SETLIMITTEXT, 2, 0);
+		ES_NUMBER | ES_CENTER | WS_CHILD | WS_TABSTOP | WS_VISIBLE,
+		DPIScale(334), DPIScale(147),
+		DPIScale(25), DPIScale(21),
+		hWnd, (HMENU)MOUSEREPEATCOUNTDOWNSECOND, hInstance, NULL);
+	SendMessage(mouseCountdownSecond, EM_SETLIMITTEXT, 2, 0);
 }
 
 
 
-void KeyboardPresserEntries(HWND hWnd, HINSTANCE hInstance)
+void AutoPresserEntries(HWND hWnd, HINSTANCE hInstance)
 {
-	keyboardPressTimer = CreateWindowEx(
+	keyboardTimerFrame = CreateWindowEx(
 		0, "BUTTON", "Keyboard Timer",
-		BS_GROUPBOX | BS_CENTER | WS_VISIBLE | WS_CHILD,
-		5.0 * DPIScale(), 186.0 * DPIScale(),
-		120.0 * DPIScale(), 125.0 * DPIScale(),
-		hWnd, (HMENU)KEYBOARDPRESSTIMER, hInstance, NULL
+		BS_GROUPBOX | BS_CENTER | WS_CHILD | WS_VISIBLE,
+		DPIScale(5), DPIScale(186),
+		DPIScale(120), DPIScale(125),
+		hWnd, (HMENU)KEYBOARDTIMERFRAME, hInstance, NULL
 	);
 
 
 	keyboardEnterHour = CreateWindowEx(
 		WS_EX_CLIENTEDGE, "EDIT", "0",
-		WS_DISABLED | WS_VISIBLE | WS_TABSTOP | WS_CHILD | ES_NUMBER | ES_CENTER,
-		10.0 * DPIScale(), 209.0 * DPIScale(),
-		44.0 * DPIScale(), 22.0 * DPIScale(),
+		ES_NUMBER | ES_CENTER | WS_CHILD | WS_TABSTOP | WS_VISIBLE | WS_DISABLED,
+		DPIScale(10), DPIScale(209),
+		DPIScale(44), DPIScale(22),
 		hWnd, (HMENU)KEYBOARDENTERHOUR, hInstance, NULL
 	);
 	SendMessage(keyboardEnterHour, EM_SETLIMITTEXT, 3, 0);
@@ -174,9 +173,9 @@ void KeyboardPresserEntries(HWND hWnd, HINSTANCE hInstance)
 
 	keyboardEnterMinute = CreateWindowEx(
 		WS_EX_CLIENTEDGE, "EDIT", "0",
-		WS_DISABLED | WS_VISIBLE | WS_TABSTOP | WS_CHILD | ES_NUMBER | ES_CENTER,
-		10.0 * DPIScale(), 233.0 * DPIScale(),
-		44.0 * DPIScale(), 22.0 * DPIScale(),
+		ES_NUMBER | ES_CENTER | WS_CHILD | WS_TABSTOP | WS_VISIBLE | WS_DISABLED,
+		DPIScale(10), DPIScale(233),
+		DPIScale(44), DPIScale(22),
 		hWnd, (HMENU)KEYBOARDENTERMINUTE, hInstance, NULL
 	);
 	SendMessage(keyboardEnterMinute, EM_SETLIMITTEXT, 4, 0);
@@ -184,9 +183,9 @@ void KeyboardPresserEntries(HWND hWnd, HINSTANCE hInstance)
 
 	keyboardEnterSecond = CreateWindowEx(
 		WS_EX_CLIENTEDGE, "EDIT", "1",
-		WS_DISABLED | WS_VISIBLE | WS_TABSTOP | WS_CHILD | ES_NUMBER | ES_CENTER,
-		10.0 * DPIScale(), 257.0 * DPIScale(),
-		44.0 * DPIScale(), 22.0 * DPIScale(),
+		ES_NUMBER | ES_CENTER | WS_CHILD | WS_TABSTOP | WS_VISIBLE | WS_DISABLED,
+		DPIScale(10), DPIScale(257),
+		DPIScale(44), DPIScale(22),
 		hWnd, (HMENU)KEYBOARDENTERSECOND, hInstance, NULL
 	);
 	SendMessage(keyboardEnterSecond, EM_SETLIMITTEXT, 4, 0);
@@ -194,71 +193,71 @@ void KeyboardPresserEntries(HWND hWnd, HINSTANCE hInstance)
 
 	keyboardEnterMilliSecond = CreateWindowEx(
 		WS_EX_CLIENTEDGE, "EDIT", "0",
-		WS_DISABLED | WS_VISIBLE | WS_TABSTOP | WS_CHILD | ES_NUMBER | ES_CENTER,
-		10.0 * DPIScale(), 281.0 * DPIScale(),
-		44.0 * DPIScale(), 22.0 * DPIScale(),
+		ES_NUMBER | ES_CENTER | WS_CHILD | WS_TABSTOP | WS_VISIBLE | WS_DISABLED,
+		DPIScale(10), DPIScale(281),
+		DPIScale(44), DPIScale(22),
 		hWnd, (HMENU)KEYBOARDENTERMILLISECOND, hInstance, NULL
 	);
 	SendMessage(keyboardEnterMilliSecond, EM_SETLIMITTEXT, 4, 0);
 
 
-	keyboardSelectKey = CreateWindowEx(
+	keyboardKeyFrame = CreateWindowEx(
 		0, "BUTTON", "Keyboard Key",
-		BS_GROUPBOX | BS_CENTER | WS_VISIBLE | WS_CHILD,
-		150.0 * DPIScale(), 227.0 * DPIScale(),
-		100.0 * DPIScale(), 52.0 * DPIScale(),
-		hWnd, (HMENU)KEYBOARDSELECTKEY, hInstance, NULL
+		BS_GROUPBOX | BS_CENTER | WS_CHILD | WS_VISIBLE,
+		DPIScale(150), DPIScale(221),
+		DPIScale(100), DPIScale(80),
+		hWnd, (HMENU)KEYBOARDKEYFRAME, hInstance, NULL
 	);
 
 
-	keyboardPressRepeat = CreateWindowEx(
+	keyboardPressRepeatFrame = CreateWindowEx(
 		0, "BUTTON", "Press Repeat",
-		BS_GROUPBOX | BS_CENTER | WS_VISIBLE | WS_CHILD,
-		264.0 * DPIScale(), 221.0 * DPIScale(),
-		101.0 * DPIScale(), 138.0 * DPIScale(),
-		hWnd, (HMENU)KEYBOARDPRESSREPEAT, hInstance, NULL
+		BS_GROUPBOX | BS_CENTER | WS_CHILD | WS_VISIBLE,
+		DPIScale(264), DPIScale(221),
+		DPIScale(101), DPIScale(138),
+		hWnd, (HMENU)KEYBOARDPRESSREPEATFRAME, hInstance, NULL
 	);
 
 
 	keyboardRepeatTimesEntry = CreateWindowEx(
 		WS_EX_CLIENTEDGE, "EDIT", "5",
-		ES_NUMBER | ES_CENTER | WS_DISABLED | WS_VISIBLE | WS_TABSTOP | WS_CHILD ,
-		292.0 * DPIScale(), 274.0 * DPIScale(),
-		64.0 * DPIScale(), 20.0 * DPIScale(),
+		ES_NUMBER | ES_CENTER | WS_CHILD | WS_TABSTOP | WS_VISIBLE | WS_DISABLED,
+		DPIScale(292), DPIScale(274),
+		DPIScale(64), DPIScale(20),
 		hWnd, (HMENU)KEYBOARDREPEATTIMESENTRY, hInstance, NULL);
 	SendMessage(keyboardRepeatTimesEntry, EM_SETLIMITTEXT, 5, 0);
 
 	keyboardRepeatTimesSpin = CreateWindow(UPDOWN_CLASS, NULL,
-		UDS_ALIGNRIGHT | UDS_ARROWKEYS | UDS_SETBUDDYINT | WS_DISABLED | WS_VISIBLE | WS_TABSTOP | WS_CHILD,
+		UDS_ALIGNRIGHT | UDS_ARROWKEYS | UDS_SETBUDDYINT | WS_CHILD | WS_VISIBLE | WS_DISABLED,
 		0, 0, 0, 0,
 		hWnd, (HMENU)KEYBOARDREPEATTIMESSPIN, hInstance, NULL);
 	SendMessage(keyboardRepeatTimesSpin, UDM_SETBUDDY, (WPARAM)keyboardRepeatTimesEntry, 0);
 	SendMessage(keyboardRepeatTimesSpin, UDM_SETRANGE32, 0, MAKELPARAM(65535, 0));
 
 
-	keyboardRepeatTimerHour = CreateWindowEx(
+	keyboardCountdownHour = CreateWindowEx(
 		WS_EX_CLIENTEDGE, "EDIT", "00",
-		ES_NUMBER | ES_CENTER | WS_DISABLED | WS_VISIBLE | WS_TABSTOP | WS_CHILD,
-		270.0 * DPIScale(), 329.0 * DPIScale(),
-		25.0 * DPIScale(), 21.0 * DPIScale(),
-		hWnd, (HMENU)KEYBOARDREPEATTIMERHOUR, hInstance, NULL);
-	SendMessage(keyboardRepeatTimerHour, EM_SETLIMITTEXT, 2, 0);
+		ES_NUMBER | ES_CENTER | WS_CHILD | WS_TABSTOP | WS_VISIBLE | WS_DISABLED,
+		DPIScale(270), DPIScale(329),
+		DPIScale(25), DPIScale(21),
+		hWnd, (HMENU)KEYBOARDREPEATCOUNTDOWNHOUR, hInstance, NULL);
+	SendMessage(keyboardCountdownHour, EM_SETLIMITTEXT, 2, 0);
 
-	keyboardRepeatTimerMinute = CreateWindowEx(
+	keyboardCountdownMinute = CreateWindowEx(
 		WS_EX_CLIENTEDGE, "EDIT", "00",
-		ES_NUMBER | ES_CENTER | WS_DISABLED | WS_VISIBLE | WS_TABSTOP | WS_CHILD,
-		302.0 * DPIScale(), 329.0 * DPIScale(),
-		25.0 * DPIScale(), 21.0 * DPIScale(),
-		hWnd, (HMENU)KEYBOARDREPEATTIMERMINUTE, hInstance, NULL);
-	SendMessage(keyboardRepeatTimerMinute, EM_SETLIMITTEXT, 2, 0);
+		ES_NUMBER | ES_CENTER | WS_CHILD | WS_TABSTOP | WS_VISIBLE | WS_DISABLED,
+		DPIScale(302), DPIScale(329),
+		DPIScale(25), DPIScale(21),
+		hWnd, (HMENU)KEYBOARDREPEATCOUNTDOWNMINUTE, hInstance, NULL);
+	SendMessage(keyboardCountdownMinute, EM_SETLIMITTEXT, 2, 0);
 
-	keyboardRepeatTimerSecond = CreateWindowEx(
+	keyboardCountdownSecond = CreateWindowEx(
 		WS_EX_CLIENTEDGE, "EDIT", "05",
-		ES_NUMBER | ES_CENTER | WS_DISABLED | WS_VISIBLE | WS_TABSTOP | WS_CHILD,
-		334.0 * DPIScale(), 329.0 * DPIScale(),
-		25.0 * DPIScale(), 21.0 * DPIScale(),
-		hWnd, (HMENU)KEYBOARDREPEATTIMERSECOND, hInstance, NULL);
-	SendMessage(keyboardRepeatTimerSecond, EM_SETLIMITTEXT, 2, 0);
+		ES_NUMBER | ES_CENTER | WS_CHILD | WS_TABSTOP | WS_VISIBLE | WS_DISABLED,
+		DPIScale(334), DPIScale(329),
+		DPIScale(25), DPIScale(21),
+		hWnd, (HMENU)KEYBOARDREPEATCOUNTDOWNSECOND, hInstance, NULL);
+	SendMessage(keyboardCountdownSecond, EM_SETLIMITTEXT, 2, 0);
 }
 
 
@@ -268,43 +267,43 @@ void SettingsEntries(HWND hWnd, HINSTANCE hInstance)
 	settingsFrame = CreateWindowEx(
 		0, "BUTTON", "Settings",
 		BS_GROUPBOX | BS_CENTER | WS_CHILD,
-		75.0 * DPIScale(), (15.0 - 6.0) * DPIScale(),
-		250.0 * DPIScale(), 293.0 * DPIScale(),
+		DPIScale(75), DPIScale(15 - 6),
+		DPIScale(250), DPIScale(293),
 		hWnd, (HMENU)SETTINGSFRAME, hInstance, NULL
 	);
 
 
-	themeSelect = CreateWindowEx(
+	selectThemeFrame = CreateWindowEx(
 		0, "BUTTON", "Select Theme",
 		BS_GROUPBOX | BS_CENTER | WS_CHILD,
-		120.0 * DPIScale(), (45.0 - 6.0) * DPIScale(),
-		160.0 * DPIScale(), 56.0 * DPIScale(),
-		hWnd, (HMENU)THEMEGROUPBOX, hInstance, NULL
+		DPIScale(120), DPIScale(45 - 6),
+		DPIScale(160), DPIScale(56),
+		hWnd, (HMENU)THEMESFRAME, hInstance, NULL
 	);
 
 
 	randIntervalAndHoldTimeFrame = CreateWindowEx(
 		0, "BUTTON", "Random Interval / Hold Time",
 		BS_GROUPBOX | BS_CENTER | WS_CHILD,
-		120.0 * DPIScale(), (170.0 - 6.0) * DPIScale(),
-		160.0 * DPIScale(), 54.0 * DPIScale(),
+		DPIScale(120), DPIScale(110 - 6),
+		DPIScale(160), DPIScale(54),
 		hWnd, (HMENU)RANDINTERVALHOLDTIMEFRAME, hInstance, NULL
 	);
 
 	randomIntervalEnter = CreateWindowEx(
 		WS_EX_CLIENTEDGE, "EDIT", 0,
-		WS_TABSTOP | WS_CHILD | ES_NUMBER | ES_CENTER,
-		142.0 * DPIScale(), 185.0 * DPIScale(),
-		44.0 * DPIScale(), 21.0 * DPIScale(),
+		ES_NUMBER | ES_CENTER | WS_CHILD | WS_TABSTOP,
+		DPIScale(142), DPIScale(125),
+		DPIScale(44), DPIScale(21),
 		hWnd, (HMENU)RANDOMINTERVALENTER, hInstance, NULL
 	);
 	SendMessage(randomIntervalEnter, EM_SETLIMITTEXT, 3, 0);
 
 	holdTimeEnter = CreateWindowEx(
 		WS_EX_CLIENTEDGE, "EDIT", 0,
-		WS_TABSTOP | WS_CHILD | ES_NUMBER | ES_CENTER,
-		214.0 * DPIScale(), 185.0 * DPIScale(),
-		44.0 * DPIScale(), 21.0 * DPIScale(),
+		ES_NUMBER | ES_CENTER | WS_CHILD | WS_TABSTOP,
+		DPIScale(214), DPIScale(125),
+		DPIScale(44), DPIScale(21),
 		hWnd, (HMENU)HOLDTIMEENTER, hInstance, NULL
 	);
 	SendMessage(holdTimeEnter, EM_SETLIMITTEXT, 3, 0);
@@ -327,6 +326,6 @@ void SettingsEntries(HWND hWnd, HINSTANCE hInstance)
 void LoadingEntries(HWND hWnd, HINSTANCE hInstance)
 {
 	AutoClickerEntries(hWnd, hInstance);
-	KeyboardPresserEntries(hWnd, hInstance);
+	AutoPresserEntries(hWnd, hInstance);
 	SettingsEntries(hWnd, hInstance);
 }

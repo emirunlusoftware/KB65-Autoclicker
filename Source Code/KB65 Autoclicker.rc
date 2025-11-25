@@ -65,6 +65,8 @@ IDI_SAVESCRIPT          ICON                    "Images\\save.ico"
 IDI_LOADSCRIPT          ICON                    "Images\\load.ico"
 IDI_SOCCER              ICON                    "Images\\soccerball.ico"
 IDI_ANCHOR              ICON                    "Images\\anchor.ico"
+IDI_ROCKET              ICON                    "Images\\rocket.ico"
+IDI_FLOWER              ICON                    "Images\\flower.ico"
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -72,8 +74,8 @@ IDI_ANCHOR              ICON                    "Images\\anchor.ico"
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,1,0
- PRODUCTVERSION 1,0,1,0
+ FILEVERSION 1,0,2,0
+ PRODUCTVERSION 1,0,2,0
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -89,12 +91,12 @@ BEGIN
         BLOCK "000904b0"
         BEGIN
             VALUE "FileDescription", "KB65 Autoclicker"
-            VALUE "FileVersion", "1.0.1"
+            VALUE "FileVersion", "1.0.2"
             VALUE "InternalName", "KB65 Autoclicker"
-            VALUE "LegalCopyright", "Copyright (C) 2025 Emir Ünlü (emirunlusoftware)"
+            VALUE "LegalCopyright", "Copyright (C) 2025 Emir Ünlü  (emirunlusoftware)"
             VALUE "OriginalFilename", "KB65 Autoclicker.exe"
             VALUE "ProductName", " KB65 Autoclicker"
-            VALUE "ProductVersion", "1.0.1"
+            VALUE "ProductVersion", "1.0.2"
         END
     END
     BLOCK "VarFileInfo"

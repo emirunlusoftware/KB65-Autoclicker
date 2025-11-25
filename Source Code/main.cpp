@@ -1,4 +1,4 @@
-#include "main.h"
+#include "KB65 Autoclicker.h"
 #include <shellapi.h>
 #include <time.h>
 
@@ -9,36 +9,40 @@
 HDC hdc;
 HINSTANCE hInst = GetModuleHandle(NULL);
 HWND hWnd;
-OSVERSIONINFO winver;
 PAINTSTRUCT ps;
-WNDCLASSEX wcex = {0};
 
 
-UINT
-option					= 0;
+UINT currentPage = 0;
 
 static bool
-mouseActive				= true,
-keyboardActive			= false,
-mouseHotkeySelected		= true,
-keyboardHotkeySelected	= true;
+mouseHotkeySelected = true,
+keyboardHotkeySelected = true,
+mouseRunning = false,
+keyboardRunning = false;
+
 
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)
 	{
-
 		case WM_CREATE:
 		{
 			winver.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
 			GetVersionEx(&winver);
 
 			srand(time(NULL));
-			LoadingEntries(hWnd, hInst);
+			timeBeginPeriod(1);
+
 			LoadingButtons(hWnd, hInst);
+			LoadingEntries(hWnd, hInst);
 			LoadingFonts(hWnd);
+			LoadingTooltips(hWnd);
 			LoadingImages();
+
+			SystemTrayInit(hWnd, hInst);
+
+			RealignZOrderChain(hWnd);
 
 			RegisterHotKey(hWnd, MOUSECLICKHOTKEY, 0, mouseHotkey);
 			break;
@@ -72,28 +76,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 			HFONT hSafeFont = (HFONT)SelectObject(hdc, globalFont);
 			SetBkMode(hdc, TRANSPARENT);
+			PageTexts(hdc, currentPage);
 
-			switch(option)
-			{
-				case MAINPAGE:
-				{
-					PageTexts(hdc, MAINPAGE);
-					DrawLine(hdc, 0, 182.0, (370.0 + 30.0), 182.0, lineColor1, 1);
-					if (themeOption != THEMEDEFAULT)
-						DrawLine(hdc, 387.0, 0, 387.0, 364.0, lineColor2, 34);
-
-					break;
-				}
-
-				case SETTINGSPAGE:
-				{
-					PageTexts(hdc, SETTINGSPAGE);
-					if (themeOption != THEMEDEFAULT)
-						DrawLine(hdc, 387.0, 0, 387.0, 364.0, lineColor2, 34);
-
-					break;
-				}
-			}
+			if (currentPage == MAINPAGE)
+				DrawLine(hdc, 0, 182, (370 + 30), 182, lineColor1, 1);
+			if (themeOption != THEMEDEFAULT)
+				DrawLine(hdc, 387, 0, 387, 364, lineColor2, 34);
 
 			GetImages(hdc, themeOption);
 
@@ -106,53 +94,53 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		case WM_COMMAND:
 		{
-
 			switch (LOWORD(wParam))
 			{
-
 				case ACTIVATEMOUSE:
-				case ACTIVATEMOUSETRAY:
+				case ACTIVATEMOUSE_VIA_TRAY:
 				{
-					KillTimer(hWnd, AUTOCLICKERTIMER);
-					KillTimer(hWnd, AUTOCLICKERCOUNTDOWN);
-					KillTimer(hWnd, AUTOCLICKER_TICKTOCK);
-
-					isClickerTimerActive = false;
+					SendMessage(hWnd, WM_COMMAND, MOUSECLICKSTOPBUTTON, 0);
 
 					mouseActive = !mouseActive;
 					SendMessage(activateMouseCheckBox, BM_SETCHECK, mouseActive, 0);
 
-					if ((mouseHotkey == keyboardHotkey && mouseSpecialKey == keyboardSpecialKey) && mouseActive)
-						UnregisterHotKey(hWnd, KEYBOARDPRESSHOTKEY);
+					if ((mouseHotkey == keyboardHotkey && mouseSpecialKey == keyboardSpecialKey))
+					{
+						if (mouseActive)
+							UnregisterHotKey(hWnd, KEYBOARDPRESSHOTKEY);
+						else
+						{
+							UnregisterHotKey(hWnd, MOUSECLICKHOTKEY);
+							UnregisterHotKey(hWnd, KEYBOARDPRESSHOTKEY);
+							RegisterHotKey(hWnd, KEYBOARDPRESSHOTKEY, keyboardSpecialKey, mouseHotkey);
+						}
+					}
 
 					mouseActive
 						? RegisterHotKey(hWnd, MOUSECLICKHOTKEY, mouseSpecialKey, mouseHotkey)
 						: UnregisterHotKey(hWnd, MOUSECLICKHOTKEY);
 
-					if ((mouseHotkey == keyboardHotkey) && !mouseActive)
-						RegisterHotKey(hWnd, KEYBOARDPRESSHOTKEY, keyboardSpecialKey, mouseHotkey);
-
-					ActiveAppearance(hWnd, AUTOCLICKER, mouseActive, isPresserTimerActive);
+					ActiveAppearance(hWnd, AUTOCLICKER, mouseActive);
 
 					break;
 				}
 
 				case ACTIVATEKEYBOARD:
-				case ACTIVATEKEYBOARDTRAY:
+				case ACTIVATEKEYBOARD_VIA_TRAY:
 				{
-					KillTimer(hWnd, AUTOPRESSERTIMER);
-					KillTimer(hWnd, AUTOPRESSERCOUNTDOWN);
-					KillTimer(hWnd, AUTOPRESSER_TICKTOCK);
-
-					isPresserTimerActive = false;
+					SendMessage(hWnd, WM_COMMAND, KEYBOARDPRESSSTOPBUTTON, 0);
 
 					keyboardActive = !keyboardActive;
 					SendMessage(activateKeyboardCheckBox, BM_SETCHECK, keyboardActive, 0);
-					keyboardActive
-						? RegisterHotKey(hWnd, KEYBOARDPRESSHOTKEY, keyboardSpecialKey, keyboardHotkey)
-						: UnregisterHotKey(hWnd, KEYBOARDPRESSHOTKEY);
+					if (keyboardActive)
+					{
+						UnregisterHotKey(hWnd, KEYBOARDPRESSHOTKEY);
+						RegisterHotKey(hWnd, KEYBOARDPRESSHOTKEY, keyboardSpecialKey, keyboardHotkey);
+					}
+					else
+						UnregisterHotKey(hWnd, KEYBOARDPRESSHOTKEY);
 
-					ActiveAppearance(hWnd, AUTOPRESSER, keyboardActive, isClickerTimerActive);
+					ActiveAppearance(hWnd, AUTOPRESSER, keyboardActive);
 
 					break;
 				}
@@ -165,10 +153,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					break;
 				}
 
-				case MOUSESINGLEORDOUBLE:
+				case MOUSECLICKTYPE:
 				{
-					if (HIWORD(wParam) == CBN_SELCHANGE)
-						clickType = GetMouseClickType(mouseSingleOrDouble);
+					if (HIWORD(wParam) == CBN_SELCHANGE && !mouseRunning)
+						clickType = GetMouseClickType(mouseClickType);
 					break;
 				}
 
@@ -179,79 +167,97 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					break;
 				}
 
-				case MOUSECLICKHOTKEYBUTTON:
+				case KEYBOARDHOLDCHECKBOX:
 				{
-					UnregisterHotKey(hWnd, MOUSECLICKHOTKEY);
-					mouseHotkeySelected = FALSE;
-
-					HotkeySelectionAppearance(hWnd, mouseActive, keyboardActive, HIDE);
-					HotkeyButtonAppearance(mouseHotkeyButton, HIDE);
-					SetWindowText(mouseHotkeyButton, "Select a Key");
-
-					GetHotkey(hWnd, &mouseHotkey, &mouseHotkeySelected, HOTKEYAUTOCLICKER);
-					HotkeySelectionAppearance(hWnd, mouseActive, keyboardActive, SHOW);
-					HotkeyButtonAppearance(mouseHotkeyButton, SHOW);
-
+					isKeyboardHoldMode = SendMessage(keyboardHoldCheckBox, BM_GETCHECK, 0, 0);
 					break;
 				}
 
+
+
+				case MOUSECLICKHOTKEYBUTTON:
 				case KEYBOARDPRESSHOTKEYBUTTON:
 				{
-					UnregisterHotKey(hWnd, KEYBOARDPRESSHOTKEY);
-					keyboardHotkeySelected = FALSE;
+					UnregisterHotKey(hWnd, LOWORD(wParam) == MOUSECLICKHOTKEYBUTTON ? MOUSECLICKHOTKEY : KEYBOARDPRESSHOTKEY);
 
-					HotkeySelectionAppearance(hWnd, mouseActive, keyboardActive, HIDE);
-					HotkeyButtonAppearance(keyboardHotkeyButton, HIDE);
-					SetWindowText(keyboardHotkeyButton, "Select a Key");
-
-					GetHotkey(hWnd, &keyboardHotkey, &keyboardHotkeySelected, HOTKEYAUTOPRESSER);
-					HotkeySelectionAppearance(hWnd, mouseActive, keyboardActive, SHOW);
-					HotkeyButtonAppearance(keyboardHotkeyButton, SHOW);
+					HotkeySelectionAppearance(hWnd, LOWORD(wParam), HIDE);
+					if (LOWORD(wParam) == MOUSECLICKHOTKEYBUTTON)
+					{
+						SetWindowText(mouseHotkeyButton, "Select a Key");
+						GetHotkey(hWnd, &mouseHotkey, &mouseHotkeySelected, HOTKEYAUTOCLICKER);
+					}
+					else if (LOWORD(wParam) == KEYBOARDPRESSHOTKEYBUTTON)
+					{
+						SetWindowText(keyboardHotkeyButton, "Select a Key");
+						GetHotkey(hWnd, &keyboardHotkey, &keyboardHotkeySelected, HOTKEYAUTOPRESSER);
+					}
+					HotkeySelectionAppearance(hWnd, LOWORD(wParam), SHOW);
 
 					break;
 				}
+
+
 
 				case MOUSECLICKSTARTBUTTON:
 				case MOUSECLICKSTOPBUTTON:
 				{
-					KillTimer(hWnd, AUTOCLICKERCOUNTDOWN);
-					KillTimer(hWnd, AUTOCLICKER_TICKTOCK);
-
-					if (holdingInProgress == 1)
+					if (LOWORD(wParam) == MOUSECLICKSTARTBUTTON)
 					{
-						KillTimer(hWnd, HOLDTIME);
-						PostMessage(hWnd, STOP_CLICKERHOLDTIME, 0, 0);
+						mouseRunning = true;
+						if (StartAutomation(hWnd, AUTOCLICKER) != SUCCESS)
+							break;
 					}
+					else if (LOWORD(wParam) == MOUSECLICKSTOPBUTTON)
+					{
+						mouseRunning = false;
 
-					if (GetRepeatTimer(hWnd, AUTOCLICKER) == 1)
-						break;
+						if (clickType == HOLD || holdingMouseInProgress)
+							ReleaseMouse();
 
-					if (SetAppTimer(hWnd, TIMERAUTOCLICKER) == 1)
-						MessageBox(hWnd, "Mouse Timer must be under Random Interval and Hold Time.", "Error", MB_ICONEXCLAMATION);
+						for (int mIndex = CLICKER; mIndex < PRESSER; mIndex++)
+						{
+							if (timers[mIndex])
+								timeKillEvent(timers[mIndex]);
+						}
+						ToggleMenusDuringAutomation(hWnd, AUTOCLICKER, SHOW);
+					}
 					break;
 				}
 
 				case KEYBOARDPRESSSTARTBUTTON:
 				case KEYBOARDPRESSSTOPBUTTON:
 				{
-					KillTimer(hWnd, AUTOPRESSERCOUNTDOWN);
-					KillTimer(hWnd, AUTOPRESSER_TICKTOCK);
+					if (LOWORD(wParam) == KEYBOARDPRESSSTARTBUTTON)
+					{
+						keyboardRunning = true;
+						if (StartAutomation(hWnd, AUTOPRESSER) != SUCCESS)
+							break;
 
-					if (GetRepeatTimer(hWnd, AUTOPRESSER))
-						break;
+					}
+					else if (LOWORD(wParam) == KEYBOARDPRESSSTOPBUTTON)
+					{
+						keyboardRunning = false;
 
-					if (SetAppTimer(hWnd, TIMERAUTOPRESSER) == 1)
-						MessageBox(hWnd, "Keyboard Timer must be under Random Interval.", "Error", MB_ICONEXCLAMATION);
+						if (isKeyboardHoldMode == BST_CHECKED || holdingKeyInProgress)
+							ReleaseKey();
+
+						for (int kIndex = PRESSER; kIndex <= PRESSER_TICKTOCK; kIndex++)
+						{
+							if (timers[kIndex])
+								timeKillEvent(timers[kIndex]);
+						}
+						ToggleMenusDuringAutomation(hWnd, AUTOPRESSER, SHOW);
+					}
 					break;
 				}
+
 
 
 				case INFOBUTTON:
 				{
-					ShellExecute(NULL, "open", "https://raw.githubusercontent.com/emirunlusoftware/KB65-Autoclicker/9ec821d3880aa3cee98261dea9d88c6668b1b5b1/KB65%20Autoclicker%20User%20Guide.pdf", NULL, NULL, SW_SHOWNORMAL);
+					ShellExecute(NULL, "open", "https://raw.githubusercontent.com/emirunlusoftware/KB65-Autoclicker/c77c5d059e46337bd6a509e103cde20f558ecfe7/KB65%20Autoclicker%20User%20Guide.pdf", NULL, NULL, SW_SHOWNORMAL);
 					break;
 				}
-
 				case LOADSCRIPTSBUTTON:
 				{
 					LoadInit(hWnd);
@@ -264,9 +270,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				}
 				case SETTINGSBUTTON:
 				{
-					option = SETTINGSPAGE;
+					currentPage = SETTINGSPAGE;
 					InvalidateRect(hWnd, NULL, TRUE); 
-					ShowPages(option);
+					ShowPage(currentPage);
 					break;
 				}
 
@@ -274,13 +280,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				{
 					if (HIWORD(wParam) == CBN_SELCHANGE)
 					{
-						if (SendMessage(themesList, CB_GETCURSEL, 0, 0) != CB_ERR)
-						{
-							TCHAR themeText[16];
-							SendMessage(themesList, CB_GETLBTEXT, SendMessage(themesList, CB_GETCURSEL, 0, 0), (LPARAM)themeText);
-							SelectThemeText(themeText);
-							InvalidateRect(hWnd, NULL, TRUE);
-						}
+						SelectTheme();
+						InvalidateRect(hWnd, NULL, TRUE);
 					}
 					break;
 				}
@@ -294,11 +295,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				case ALWAYSONTOP:
 				{
 					isAlwaysOnTopChecked = SendMessage(alwaysOnTop, BM_GETCHECK, 0, 0);
+					SetWindowPos(hWnd, isAlwaysOnTopChecked == BST_CHECKED
+						? HWND_TOPMOST
+						: HWND_NOTOPMOST,
+						0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+					break;
+				}
 
-					if (isAlwaysOnTopChecked == BST_CHECKED)
-						SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+				case DISABLETOOLTIPS:
+				{
+					isDisableTooltipsChecked = SendMessage(disableTooltips, BM_GETCHECK, 0, 0);
+
+					if (isDisableTooltipsChecked == BST_CHECKED)
+						Tooltips(hWnd, HIDE);
 					else
-						SetWindowPos(hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+						Tooltips(hWnd, SHOW);
 
 					break;
 				}
@@ -313,13 +324,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 				case BACKTOMAINBUTTON:
 				{
-					option = MAINPAGE;
+					currentPage = MAINPAGE;
 					InvalidateRect(hWnd, NULL, TRUE);
-					ShowPages(option);
+					ShowPage(currentPage);
 					break;
 				}
 
-				case OPENTRAY:
+				case OPEN_VIA_TRAY:
 				{
 					ShowWindow(hWnd, SW_RESTORE);
 					SetForegroundWindow(hWnd);
@@ -327,14 +338,30 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					break;
 				}
 
-				case QUITTRAY:
+				case QUIT_VIA_TRAY:
 				{
-					KillTimer(hWnd, AUTOCLICKERTIMER);
-					KillTimer(hWnd, AUTOPRESSERTIMER);
-					PostQuitMessage(0);
+					PostMessage(hWnd, WM_CLOSE, 0, 0);
 					break;
 				}
 
+				// Press ESC to go to previous page, or exit the program.
+				// Doesn't work if ESC is set as hotkey.
+				case IDCANCEL:
+				{
+					switch(currentPage)
+					{
+						case MAINPAGE:
+							PostMessage(hWnd, WM_CLOSE, 0, 0);
+							break;
+
+						case SETTINGSPAGE:
+							currentPage = MAINPAGE;
+							InvalidateRect(hWnd, NULL, TRUE);
+							ShowPage(currentPage);
+							break;
+					}
+					break;
+				}
 			}
 			break;
 		}
@@ -348,116 +375,36 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			{
 				if ((mouseHotkey == keyboardHotkey) && (mouseSpecialKey == keyboardSpecialKey) && mouseActive && keyboardActive)
 				{
-					KillTimer(hWnd, AUTOCLICKERCOUNTDOWN);
-					KillTimer(hWnd, AUTOCLICKER_TICKTOCK);
-					KillTimer(hWnd, AUTOPRESSERCOUNTDOWN);
-					KillTimer(hWnd, AUTOPRESSER_TICKTOCK);
-
-					if (holdingInProgress == 1)
+					// if autoclicker OR autopresser is still active, stop all of them by pressing hotkey.
+					if (mouseRunning || keyboardRunning)
 					{
-						KillTimer(hWnd, HOLDTIME);
-						PostMessage(hWnd, STOP_CLICKERHOLDTIME, 0, 0);
+						if (mouseRunning)
+							PostMessage(hWnd, WM_COMMAND, MOUSECLICKSTOPBUTTON, 0);
+						if (keyboardRunning)
+							PostMessage(hWnd, WM_COMMAND, KEYBOARDPRESSSTOPBUTTON, 0);
 					}
-
-					if (GetRepeatTimer(hWnd, AUTOCLICKER) || GetRepeatTimer(hWnd, AUTOPRESSER))
-						break;
-
-					if (SetAppTimer(hWnd, TIMERAUTOCLICKER) == 1)
-						MessageBox(hWnd, "Mouse Timer must be under Random Interval and Hold Time.", "Error", MB_ICONEXCLAMATION);
-					if (SetAppTimer(hWnd, TIMERAUTOPRESSER) == 1)
-						MessageBox(hWnd, "Keyboard Timer must be under Random Interval.", "Error", MB_ICONEXCLAMATION);
-
+					else
+					{
+						PostMessage(hWnd, WM_COMMAND, MOUSECLICKSTARTBUTTON, 0);
+						PostMessage(hWnd, WM_COMMAND, KEYBOARDPRESSSTARTBUTTON, 0);
+					}
 					break;
 				}
 
 				// Activate Autoclicker by Hotkey
 				if ((wParam == MOUSECLICKHOTKEY) && mouseActive)
 				{
-					KillTimer(hWnd, AUTOCLICKERCOUNTDOWN);
-					KillTimer(hWnd, AUTOCLICKER_TICKTOCK);
-
-					if (holdingInProgress == 1)
-					{
-						KillTimer(hWnd, HOLDTIME);
-						PostMessage(hWnd, STOP_CLICKERHOLDTIME, 0, 0);
-					}
-
-					if (GetRepeatTimer(hWnd, AUTOCLICKER))
-						break;
-
-					if (SetAppTimer(hWnd, TIMERAUTOCLICKER) == 1)
-						MessageBox(hWnd, "Mouse Timer must be under Random Interval and Hold Time.", "Error", MB_ICONEXCLAMATION);
+					PostMessage(hWnd, WM_COMMAND, !mouseRunning ? MOUSECLICKSTARTBUTTON : MOUSECLICKSTOPBUTTON, 0);
 					break;
 				}
 
+				// Activate Autopresser by Hotkey
 				if ((wParam == KEYBOARDPRESSHOTKEY) && keyboardActive)
 				{
-					KillTimer(hWnd, AUTOPRESSERCOUNTDOWN);
-					KillTimer(hWnd, AUTOPRESSER_TICKTOCK);
-
-					if (GetRepeatTimer(hWnd, AUTOPRESSER))
-						break;
-
-					if (SetAppTimer(hWnd, TIMERAUTOPRESSER) == 1)
-						MessageBox(hWnd, "Keyboard Timer must be under Random Interval.", "Error", MB_ICONEXCLAMATION);
+					PostMessage(hWnd, WM_COMMAND, !keyboardRunning ? KEYBOARDPRESSSTARTBUTTON : KEYBOARDPRESSSTOPBUTTON, 0);
 					break;
 				}
 			}
-
-			break;
-		}
-
-
-
-		case WM_TIMER:
-		{
-			if (wParam == AUTOCLICKERTIMER)
-			{
-				StartAutoClicker(hWnd, clickType, mouseButton);
-
-				if (randIntervalEditValue != 0)
-				{
-					KillTimer(hWnd, AUTOCLICKERTIMER);
-					SetTimer(hWnd, AUTOCLICKERTIMER, mouseTimerDuration + RandomInterval(), NULL);
-				}
-
-				RepeatTimes(hWnd, AUTOCLICKER);
-			}
-			if (wParam == AUTOCLICKERCOUNTDOWN)
-			{
-				KillTimer(hWnd, AUTOCLICKERCOUNTDOWN);
-				SetAppTimer(hWnd, TIMERAUTOCLICKER);
-			}
-			if (wParam == AUTOCLICKER_TICKTOCK)
-			{
-				if (!UpdateCountdown(AUTOCLICKER))
-					KillTimer(hWnd, AUTOCLICKER_TICKTOCK);
-			}
-
-
-			if (wParam == AUTOPRESSERTIMER)
-			{
-				StartAutoPresser(keyboardKey);
-
-				if (randIntervalEditValue != 0)
-				{
-					KillTimer(hWnd, AUTOPRESSERTIMER);
-					SetTimer(hWnd, AUTOPRESSERTIMER, keyboardTimerDuration + RandomInterval(), NULL);
-				}
-
-				RepeatTimes(hWnd, AUTOPRESSER);
-			}
-			if (wParam == AUTOPRESSERCOUNTDOWN)
-			{
-				KillTimer(hWnd, AUTOPRESSERCOUNTDOWN);
-				SetAppTimer(hWnd, TIMERAUTOPRESSER);
-			}
-			if (wParam == AUTOPRESSER_TICKTOCK)
-			{
-				if (!UpdateCountdown(AUTOPRESSER))
-					KillTimer(hWnd, AUTOPRESSER_TICKTOCK);
-			}
-
 			break;
 		}
 
@@ -465,16 +412,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		case WM_SYSCOMMAND:
 		{
-			// Minimize to System Tray if Tray Check Box is checked
+			// Minimize to System Tray if this checkbox checked
 			if (wParam == SC_MINIMIZE && isTrayChecked)
 			{
-				MinimizeToTray();
 				ShowWindow(hWnd, SW_HIDE);
+				MinimizeToTray();
 				break;
 			}
 			else return DefWindowProc(hWnd, message, wParam, lParam);
-
-			break;
 		}
 
 
@@ -483,42 +428,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			SendMessage(keyboardSelectedKey, CB_RESETCONTENT, 0, 0);
 			PopulateComboBox(keyboardSelectedKey, (HKL)lParam);
 			break;
-
-
-
-		case WM_KEYUP:
-		{
-			if (wParam == VK_ESCAPE && wParam != MOUSECLICKHOTKEY && wParam != KEYBOARDPRESSHOTKEY)
-			{
-				switch(option)
-				{
-					/*
-						End the program by pressing ESC. 
-						You don't need to kill timers because
-						when the timers running, ESC cannot end the program.
-						So, just delete objects that we created.
-					*/
-					case MAINPAGE:
-					{
-						if (themeColor != (HBRUSH)(COLOR_BTNSHADOW))
-							DeleteObject(themeColor);
-
-						DeleteObject(wcex.hbrBackground);
-						DeleteObject(globalFont);
-						PostQuitMessage(0);
-						return 0;
-					}
-
-					case SETTINGSPAGE:
-						option = MAINPAGE;
-						InvalidateRect(hWnd, NULL, TRUE);
-						ShowPages(option);
-						break;
-				}
-			}
-
-			break;
-		}
 
 
 
@@ -531,7 +440,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				RemoveTrayIcon();
 			}
 
-			if (LOWORD(lParam) == WM_RBUTTONUP) // Right Mouse Click
+			else if (LOWORD(lParam) == WM_RBUTTONUP) // Right Mouse Click
 			{
 				POINT pt;
 				GetCursorPos(&pt);
@@ -540,18 +449,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 			break;
 		}
-
-
-
-		// Mouse with Hold Time Trigger
-		case CONT_CLICKERHOLDTIME:
-			ContinueClickerHoldTime();
-			break;
-
-		// Mouse with Hold Time Stopper
-		case STOP_CLICKERHOLDTIME:
-			StopClickerHoldTime();
-			break;
 
 
 
@@ -565,19 +462,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		case WM_DESTROY:
 		{
-			KillTimer(hWnd, AUTOCLICKERTIMER);
-			KillTimer(hWnd, AUTOCLICKERCOUNTDOWN);
-			KillTimer(hWnd, AUTOCLICKER_TICKTOCK);
-			KillTimer(hWnd, AUTOPRESSERTIMER);
-			KillTimer(hWnd, AUTOPRESSERCOUNTDOWN);
-			KillTimer(hWnd, AUTOPRESSER_TICKTOCK);
-			KillTimer(hWnd, HOLDTIME);
+			for (int tmrIndex = 0; tmrIndex <= RELEASEKEY; tmrIndex++)
+				timeKillEvent(timers[tmrIndex]);
+			timeEndPeriod(1);
 
+			UnregisterHotKey(hWnd, MOUSECLICKHOTKEY);
+			UnregisterHotKey(hWnd, KEYBOARDPRESSHOTKEY);
+			DestroyImages();
+			DeleteObject(globalFont);
 			if (themeColor != (HBRUSH)(COLOR_BTNSHADOW))
 				DeleteObject(themeColor);
 
-			DeleteObject(wcex.hbrBackground);
-			DeleteObject(globalFont);
 			PostQuitMessage(0);
 			return 0;
 		}
@@ -592,14 +487,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 
 
-TCHAR szTitle[] = "KB65 Autoclicker";
-TCHAR szWindowClass[] = "KB65 Autoclicker Window";
-
-
+char szTitle[] = "KB65 Autoclicker";
+char szWindowClass[] = "KB65 Autoclicker Window";
 ATOM MyRegisterClass(HINSTANCE hInstance)
 {
-	wcex.cbSize = sizeof(WNDCLASSEX);
+	WNDCLASSEX wcex = {0};
 
+	wcex.cbSize = sizeof(WNDCLASSEX);
 	wcex.style			= CS_HREDRAW | CS_VREDRAW;
 	wcex.lpfnWndProc	= WndProc;
 	wcex.cbClsExtra		= 0;
@@ -621,12 +515,11 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
 	hInst = hInstance;
 
+	// posLeft, posTop, posRight, posBottom
 	RECT WindowDimensions =
 	{
-		0, 0,
-		static_cast<int>(400.0 * DPIScale()),
-		static_cast<int>(364.0 * DPIScale())
-	}; // posLeft, posTop, posRight, posBottom
+		0, 0, DPIScale(400), DPIScale(364)
+	};
 
 	AdjustWindowRect(&WindowDimensions, WS_OVERLAPPEDWINDOW &~ (WS_MAXIMIZEBOX | WS_THICKFRAME), FALSE);
 
@@ -649,7 +542,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	if (!hWnd)
 		return FALSE;
 
-	SystemTrayInit(hWnd, hInstance);
 	ShowWindow(hWnd, nCmdShow);
 	UpdateWindow(hWnd);
 
@@ -658,21 +550,19 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
 
 
-int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLine, int nCmdShow)
+int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
 
-	HANDLE hMutex = CreateMutex(
-		NULL, TRUE,
-		"KB65 Autoclicker Mutex"
-	);
+	HANDLE hMutex = CreateMutex(NULL, TRUE, "KB65 Autoclicker Mutex");
+
 	if (GetLastError() == ERROR_ALREADY_EXISTS)
 		return FALSE;
 
 	MyRegisterClass(hInstance);
 
-	if (!InitInstance (hInstance, nCmdShow))
+	if (!InitInstance(hInstance, nCmdShow))
 		return FALSE;
 
 
@@ -686,8 +576,6 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCm
 		}
 	}
 
-	UnregisterHotKey(hWnd, MOUSECLICKHOTKEY);
-	UnregisterHotKey(hWnd, KEYBOARDPRESSHOTKEY);
 	ReleaseMutex(hMutex);
 	CloseHandle(hMutex);
 	return (int) msg.wParam;

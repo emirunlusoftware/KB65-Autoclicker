@@ -1,4 +1,4 @@
-#include "main.h"
+#include "KB65 Autoclicker.h"
 
 
 
@@ -9,25 +9,25 @@ void MainPage(bool isVisible)
 	// Mouse Subpage
 	ShowWindow(activateMouseCheckBox, isVisible);
 
-	ShowWindow(mouseClickTimer, isVisible);
+	ShowWindow(mouseTimerFrame, isVisible);
 	ShowWindow(mouseEnterHour, isVisible);
 	ShowWindow(mouseEnterMinute, isVisible);
 	ShowWindow(mouseEnterSecond, isVisible);
 	ShowWindow(mouseEnterMilliSecond, isVisible);
 
-	ShowWindow(mouseClickType, isVisible);
+	ShowWindow(mouseClickTypeFrame, isVisible);
 	ShowWindow(mouseLmB, isVisible);
-	ShowWindow(mouseSingleOrDouble, isVisible);
+	ShowWindow(mouseClickType, isVisible);
 
-	ShowWindow(mouseClickRepeat, isVisible);
+	ShowWindow(mouseClickRepeatFrame, isVisible);
 	ShowWindow(mouseRepeatInfinity, isVisible);
 	ShowWindow(mouseRepeatTimes, isVisible);
 	ShowWindow(mouseRepeatTimesEntry, isVisible);
 	ShowWindow(mouseRepeatTimesSpin, isVisible);
-	ShowWindow(mouseRepeatTimer, isVisible);
-	ShowWindow(mouseRepeatTimerHour, isVisible);
-	ShowWindow(mouseRepeatTimerMinute, isVisible);
-	ShowWindow(mouseRepeatTimerSecond, isVisible);
+	ShowWindow(mouseCountdown, isVisible);
+	ShowWindow(mouseCountdownHour, isVisible);
+	ShowWindow(mouseCountdownMinute, isVisible);
+	ShowWindow(mouseCountdownSecond, isVisible);
 
 	ShowWindow(mouseHotkeyButton, isVisible);
 	ShowWindow(mouseClickStart, isVisible);
@@ -37,24 +37,25 @@ void MainPage(bool isVisible)
 	// Keyboard Subpage
 	ShowWindow(activateKeyboardCheckBox, isVisible);
 
-	ShowWindow(keyboardPressTimer, isVisible);
+	ShowWindow(keyboardTimerFrame, isVisible);
 	ShowWindow(keyboardEnterHour, isVisible);
 	ShowWindow(keyboardEnterMinute, isVisible);
 	ShowWindow(keyboardEnterSecond, isVisible);
 	ShowWindow(keyboardEnterMilliSecond, isVisible);
 
-	ShowWindow(keyboardSelectKey, isVisible);
+	ShowWindow(keyboardKeyFrame, isVisible);
 	ShowWindow(keyboardSelectedKey, isVisible);
+	ShowWindow(keyboardHoldCheckBox, isVisible);
 
-	ShowWindow(keyboardPressRepeat, isVisible);
+	ShowWindow(keyboardPressRepeatFrame, isVisible);
 	ShowWindow(keyboardRepeatInfinity, isVisible);
 	ShowWindow(keyboardRepeatTimes, isVisible);
 	ShowWindow(keyboardRepeatTimesEntry, isVisible);
 	ShowWindow(keyboardRepeatTimesSpin, isVisible);
-	ShowWindow(keyboardRepeatTimer, isVisible);
-	ShowWindow(keyboardRepeatTimerHour, isVisible);
-	ShowWindow(keyboardRepeatTimerMinute, isVisible);
-	ShowWindow(keyboardRepeatTimerSecond, isVisible);
+	ShowWindow(keyboardCountdown, isVisible);
+	ShowWindow(keyboardCountdownHour, isVisible);
+	ShowWindow(keyboardCountdownMinute, isVisible);
+	ShowWindow(keyboardCountdownSecond, isVisible);
 
 	ShowWindow(keyboardHotkeyButton, isVisible);
 	ShowWindow(keyboardPressStart, isVisible);
@@ -73,26 +74,27 @@ void MainPage(bool isVisible)
 void SettingsPage(bool isVisible)
 {
 	ShowWindow(settingsFrame, isVisible);
-	ShowWindow(themeSelect, isVisible);
+	ShowWindow(selectThemeFrame, isVisible);
 	ShowWindow(themesList, isVisible);
 	ShowWindow(randIntervalAndHoldTimeFrame, isVisible);
 	ShowWindow(randomIntervalEnter, isVisible);
 	ShowWindow(holdTimeEnter, isVisible);
-	ShowWindow(minimizeOnTray, isVisible);
 	ShowWindow(alwaysOnTop, isVisible);
+	ShowWindow(minimizeOnTray, isVisible);
+	ShowWindow(disableTooltips, isVisible);
 	ShowWindow(debugHotkeyButton, isVisible);
 	ShowWindow(backToMainButton, isVisible);
 }
 
 
 
-void ShowPages(int page)
+void ShowPage(int page)
 {
 	switch (page)
 	{
 		case MAINPAGE:
-			SettingsPage(HIDE);
 			MainPage(SHOW);
+			SettingsPage(HIDE);
 			break;
 
 		case SETTINGSPAGE:

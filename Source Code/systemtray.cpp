@@ -1,4 +1,4 @@
-#include "main.h"
+#include "KB65 Autoclicker.h"
 #include <shellapi.h>
 
 
@@ -6,7 +6,6 @@
 
 
 NOTIFYICONDATA nid;
-HMENU trayMenu;
 LRESULT isTrayChecked;
 
 void SystemTrayInit(HWND hWnd, HINSTANCE hInstance)
@@ -18,7 +17,7 @@ void SystemTrayInit(HWND hWnd, HINSTANCE hInstance)
 	nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
 	nid.uCallbackMessage = WM_USER + 1;
 	nid.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON));
-	lstrcpyn(nid.szTip, ("KB65 Autoclicker"), ARRAYSIZE(nid.szTip));
+	lstrcpyn(nid.szTip, "KB65 Autoclicker", ARRAYSIZE(nid.szTip));
 }
 
 
@@ -32,20 +31,21 @@ void MinimizeToTray()
 
 void ShowTrayMenu(HWND hWnd, POINT pt, bool mouseActive, bool keyboardActive)
 {
-	trayMenu = CreatePopupMenu();
+	HMENU trayMenu = CreatePopupMenu();
 
-	{
-		AppendMenu(trayMenu, MF_STRING | (mouseActive ? MF_CHECKED : MF_UNCHECKED), ACTIVATEMOUSETRAY, "Activate Mouse");
-		AppendMenu(trayMenu, MF_STRING | (keyboardActive ? MF_CHECKED : MF_UNCHECKED), ACTIVATEKEYBOARDTRAY, "Activate Keyboard");
 
-		AppendMenu(trayMenu, MF_SEPARATOR, NULL, 0);
+	AppendMenu(trayMenu, MF_STRING | (mouseActive ? MF_CHECKED : MF_UNCHECKED), ACTIVATEMOUSE_VIA_TRAY, "Activate Mouse");
+	AppendMenu(trayMenu, MF_STRING | (keyboardActive ? MF_CHECKED : MF_UNCHECKED), ACTIVATEKEYBOARD_VIA_TRAY, "Activate Keyboard");
 
-		AppendMenu(trayMenu, MF_STRING, OPENTRAY, "Open");
-		AppendMenu(trayMenu, MF_STRING, QUITTRAY, "Quit");
-	}
+	AppendMenu(trayMenu, MF_SEPARATOR, NULL, 0);
+
+	AppendMenu(trayMenu, MF_STRING, OPEN_VIA_TRAY, "Open");
+	AppendMenu(trayMenu, MF_STRING, QUIT_VIA_TRAY, "Quit");
+
 
 	SetForegroundWindow(hWnd);
 	TrackPopupMenu(trayMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hWnd, NULL);
+	PostMessage(hWnd, WM_NULL, 0, 0);
 	DestroyMenu(trayMenu);
 }
 

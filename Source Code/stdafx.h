@@ -26,11 +26,14 @@
 
 // Windows Header Files
 #include <windows.h>
+#include <commctrl.h>
+#include <mmsystem.h>
+#pragma comment(lib, "winmm.lib")
 
 // C RunTime Header Files
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <tchar.h>
 
 
 // TODO: reference additional headers your program requires here

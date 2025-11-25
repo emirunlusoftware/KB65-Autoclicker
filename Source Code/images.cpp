@@ -1,25 +1,22 @@
-#include "main.h"
+#include "KB65 Autoclicker.h"
 
 
 
 
 
-HICON soccerBall, anchorImage;
+HICON soccerBallImage, anchorImage, rocketImage, flowerImage;
+HICON* icons[4] = {&soccerBallImage, &anchorImage, &rocketImage, &flowerImage};
 void LoadingImages()
 {
-	soccerBall = (HICON)LoadImage(
+	for (int iconId = IDI_SOCCER, index = 0; iconId <= IDI_FLOWER; iconId++, index++)
+	{
+		*icons[index] = (HICON)LoadImage(
 		GetModuleHandle(NULL),
-		MAKEINTRESOURCE(IDI_SOCCER),
+		MAKEINTRESOURCE(iconId),
 		IMAGE_ICON,
-		24.0 * DPIScale(), 24.0 * DPIScale(),
+		DPIScale(24), DPIScale(24),
 		LR_CREATEDIBSECTION);
-
-	anchorImage = (HICON)LoadImage(
-		GetModuleHandle(NULL),
-		MAKEINTRESOURCE(IDI_ANCHOR),
-		IMAGE_ICON,
-		24.0 * DPIScale(), 24.0 * DPIScale(),
-		LR_CREATEDIBSECTION);
+	}
 }
 
 
@@ -28,14 +25,37 @@ void GetImages(HDC hdc, int themeOption)
 {
 	switch(themeOption)
 	{
+		case THEMEMAGIC:
+			DrawIconEx(
+				hdc,
+				DPIScale(373),
+				DPIScale(10),
+				flowerImage,
+				0, 0, 0,
+				NULL,
+				DI_NORMAL
+			);
+			break;
+
+		case THEMEROCKET:
+			DrawIconEx(
+				hdc,
+				DPIScale(373),
+				DPIScale(10),
+				rocketImage,
+				0, 0, 0,
+				NULL,
+				DI_NORMAL
+			);
+			break;
+
 		case THEMESOCCER:
 			DrawIconEx(
 				hdc,
-				373.0 * DPIScale(),
-				10.0 * DPIScale(),
-				soccerBall,
-				0, 0,
-				0,
+				DPIScale(373),
+				DPIScale(10),
+				soccerBallImage,
+				0, 0, 0,
 				NULL,
 				DI_NORMAL
 			);
@@ -44,14 +64,21 @@ void GetImages(HDC hdc, int themeOption)
 		case THEMEOCEANIC:
 			DrawIconEx(
 				hdc,
-				373.0 * DPIScale(),
-				10.0 * DPIScale(),
+				DPIScale(373),
+				DPIScale(10),
 				anchorImage,
-				0, 0,
-				0,
+				0, 0, 0,
 				NULL,
 				DI_NORMAL
 			);
 			break;
 	}
+}
+
+
+
+void DestroyImages()
+{
+	for (int index = 0; index < sizeof(icons)/sizeof(icons[0]); index++)
+		DestroyIcon(*icons[index]);
 }

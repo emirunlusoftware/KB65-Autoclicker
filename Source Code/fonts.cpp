@@ -1,17 +1,15 @@
-#include "main.h"
+#include "KB65 Autoclicker.h"
 
 
 
 
 
-HFONT globalFont;
-
-
+HFONT globalFont = NULL;
 void LoadingFonts (HWND hWnd)
 {
 	globalFont = CreateFont(
-		-11.0 * DPIScale(),
-		-5.0 * DPIScale(),
+		DPIScale(-11),
+		DPIScale(-5),
 		0, 0,
 		FW_NORMAL,
 		0, 0, 0,

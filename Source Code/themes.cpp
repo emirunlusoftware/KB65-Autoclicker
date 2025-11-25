@@ -1,4 +1,4 @@
-#include "main.h"
+#include "KB65 Autoclicker.h"
 
 
 
@@ -6,23 +6,21 @@
 
 int themeOption = THEMEDEFAULT;
 
-HPEN hPen, hSafePen;
-
 HBRUSH
 themeColor = (HBRUSH) (COLOR_BTNSHADOW);
 
 COLORREF
-lineColor1 = RGB(128, 128, 128),
+lineColor1 = RGB(144, 144, 144),
 lineColor2 = GetSysColor(NULL);
 
 
-void DrawLine(HDC hdc, double x1, double y1, double x2, double y2, COLORREF color, int lineWidth)
+void DrawLine(HDC hdc, int x1, int y1, int x2, int y2, COLORREF color, int lineWidth)
 {
-	hPen = CreatePen(PS_SOLID, lineWidth * DPIScale(), color);
-	hSafePen = (HPEN)SelectObject(hdc, hPen);
+	HPEN hPen = CreatePen(PS_SOLID, DPIScale(lineWidth), color);
+	HPEN hSafePen = (HPEN)SelectObject(hdc, hPen);
 
-	MoveToEx(hdc, x1 * DPIScale(), y1 * DPIScale(), NULL);
-	LineTo(hdc, x2 * DPIScale(), y2 * DPIScale());
+	MoveToEx(hdc, DPIScale(x1), DPIScale(y1), NULL);
+	LineTo(hdc, DPIScale(x2), DPIScale(y2));
 
 
 	/*
@@ -36,57 +34,29 @@ void DrawLine(HDC hdc, double x1, double y1, double x2, double y2, COLORREF colo
 
 
 
-void SelectThemeText(TCHAR themeText[])
-{
-	if (strcmp(themeText, "Default") == 0)
-	{
-		themeOption = THEMEDEFAULT;
-		SelectTheme(themeOption);
-	}
-	else if (strcmp(themeText, "Burlywood") == 0)
-	{
-		themeOption = THEMEBURLYWOOD;
-		SelectTheme(themeOption);
-	}
-	else if (strcmp(themeText, "Gold") == 0)
-	{
-		themeOption = THEMEGOLD;
-		SelectTheme(themeOption);
-	}
-	else if (strcmp(themeText, "Gray") == 0)
-	{
-		themeOption = THEMEGREY;
-		SelectTheme(themeOption);
-	}
-	else if (strcmp(themeText, "Lilac") == 0)
-	{
-		themeOption = THEMELILAC;
-		SelectTheme(themeOption);
-	}
-	else if (strcmp(themeText, "Soccer Pitch") == 0)
-	{
-		themeOption = THEMESOCCER;
-		SelectTheme(themeOption);
-	}
-	else if (strcmp(themeText, "Oceanic") == 0)
-	{
-		themeOption = THEMEOCEANIC;
-		SelectTheme(themeOption);
-	}
-}
-
-
-
-void SelectTheme(int themeOption)
+void SelectTheme()
 {
 	if (themeColor != (HBRUSH)(COLOR_BTNSHADOW))
 		DeleteObject(themeColor);
 
+	themeOption = (int)SendMessage(themesList, CB_GETCURSEL, 0, 0);
+
+	/*
+		0: DEFAULT
+		1: BURLYWOOD
+		2: GOLD
+		3: GRAY
+		4: MAGIC FLOWER
+		5: ROCKET
+		6: SOCCER PITCH
+		7: OCEANIC
+	*/
 	switch(themeOption)
 	{
 		case THEMEDEFAULT:
+		default:
 			themeColor = (HBRUSH) (COLOR_BTNSHADOW);
-			lineColor1 = lineColor2 = RGB(128, 128, 128);
+			lineColor1 = lineColor2 = RGB(144, 144, 144);
 			break;
 
 		case THEMEBURLYWOOD:
@@ -107,10 +77,16 @@ void SelectTheme(int themeOption)
 			lineColor2 = RGB(169, 169, 169);
 			break;
 
-		case THEMELILAC:
-			themeColor = CreateSolidBrush(RGB(200, 162, 200));
-			lineColor1 = RGB(220, 182, 220);
-			lineColor2 = RGB(195, 155, 192);
+		case THEMEMAGIC:
+			themeColor = CreateSolidBrush(RGB(224, 163, 224));
+			lineColor1 = RGB(222, 192, 222);
+			lineColor2 = RGB(217, 156, 215);
+			break;
+
+		case THEMEROCKET:
+			themeColor = CreateSolidBrush(RGB(201, 35, 31));
+			lineColor1 = RGB(220, 220, 220);
+			lineColor2 = RGB(201, 225, 231);
 			break;
 
 		case THEMESOCCER:

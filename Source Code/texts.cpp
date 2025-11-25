@@ -1,4 +1,4 @@
-#include "main.h"
+#include "KB65 Autoclicker.h"
 
 
 
@@ -7,30 +7,28 @@
 void AutoClickerTexts(HDC hdc)
 {
 	TextOut(hdc,
-		58.0 * DPIScale(),
-		30.0 * DPIScale(),
-		"hours", strlen("hours"));
+		DPIScale(58),
+		DPIScale(30),
+		"hours", STRLEN_INT("hours"));
 
 	TextOut(hdc,
-		58.0 * DPIScale(),
-		54.0 * DPIScale(),
-		"minutes", strlen("minutes"));
+		DPIScale(58),
+		DPIScale(54),
+		"minutes", STRLEN_INT("minutes"));
 
 	TextOut(hdc,
-		58.0 * DPIScale(),
-		78.0 * DPIScale(),
-		"seconds", strlen("seconds"));
+		DPIScale(58),
+		DPIScale(78),
+		"seconds", STRLEN_INT("seconds"));
 
 	TextOut(hdc,
-		58.0 * DPIScale(),
-		102.0 * DPIScale(),
-		"milliseconds", strlen("milliseconds"));
+		DPIScale(58),
+		DPIScale(102),
+		"milliseconds", STRLEN_INT("milliseconds"));
 
-	for (double xPos = 297.0; xPos <= 329.0; xPos += 32.0)
-		TextOut(hdc,
-			xPos * DPIScale(),
-			149.0 * DPIScale(),
-			":", 1);
+	// Display colons ( : ) between hour/minute/second edits.
+	for (int xPos = 297; xPos <= 329; xPos += 32)
+		TextOut(hdc, DPIScale(xPos), DPIScale(149), ":", 1);
 }
 
 
@@ -38,30 +36,28 @@ void AutoClickerTexts(HDC hdc)
 void KeyboardPresserTexts(HDC hdc)
 {
 	TextOut(hdc,
-		58.0 * DPIScale(),
-		212.0 * DPIScale(),
-		"hours", strlen("hours"));
+		DPIScale(58),
+		DPIScale(212),
+		"hours", STRLEN_INT("hours"));
 
 	TextOut(hdc,
-		58.0 * DPIScale(),
-		236.0 * DPIScale(),
-		"minutes", strlen("minutes"));
+		DPIScale(58),
+		DPIScale(236),
+		"minutes", STRLEN_INT("minutes"));
 
 	TextOut(hdc,
-		58.0 * DPIScale(),
-		260.0 * DPIScale(),
-		"seconds", strlen("seconds"));
+		DPIScale(58),
+		DPIScale(260),
+		"seconds", STRLEN_INT("seconds"));
 
 	TextOut(hdc,
-		58.0 * DPIScale(),
-		284.0 * DPIScale(),
-		"milliseconds", strlen("milliseconds"));
+		DPIScale(58),
+		DPIScale(284),
+		"milliseconds", STRLEN_INT("milliseconds"));
 
-	for (double xPos = 297.0; xPos <= 329.0; xPos += 32.0)
-		TextOut(hdc,
-			xPos * DPIScale(),
-			331.0 * DPIScale(),
-			":", 1);
+	// Display colons ( : ) between hour/minute/second edits.
+	for (int xPos = 297; xPos <= 329; xPos += 32)
+		TextOut(hdc, DPIScale(xPos), DPIScale(331), ":", 1);
 }
 
 
@@ -79,9 +75,8 @@ void PageTexts(HDC hdc, int pageTexts)
 		case SETTINGSPAGE:
 		{
 			TextOut(hdc,
-				5.0 * DPIScale(),
-				348.0 * DPIScale(),
-				"v1.0.1", strlen("v1.0.1"));
+				DPIScale(5), DPIScale(348),
+				"v1.0.2", STRLEN_INT("v1.0.2"));
 			break;
 		}
 	}

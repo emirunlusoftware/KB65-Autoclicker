@@ -1,5 +1,4 @@
-#include "main.h"
-#include <commctrl.h>
+#include "KB65 Autoclicker.h"
 
 
 
@@ -12,19 +11,20 @@ SIZE textSize;
 HWND
 activateMouseCheckBox,
 mouseLmB,
-mouseSingleOrDouble,
+mouseClickType,
 mouseRepeatInfinity,
 mouseRepeatTimes,
-mouseRepeatTimer,
+mouseCountdown,
 mouseClickStart,
 mouseClickStop,
 mouseHotkeyButton,
 
 activateKeyboardCheckBox,
 keyboardSelectedKey,
+keyboardHoldCheckBox,
 keyboardRepeatInfinity,
 keyboardRepeatTimes,
-keyboardRepeatTimer,
+keyboardCountdown,
 keyboardPressStart,
 keyboardPressStop,
 keyboardHotkeyButton,
@@ -35,17 +35,13 @@ saveScriptsButton,
 settingsButton,
 
 themesList,
-minimizeOnTray,
 alwaysOnTop,
+minimizeOnTray,
+disableTooltips,
 debugHotkeyButton,
-backToMainButton,
+backToMainButton;
 
-tooltipWindow;
-
-LRESULT isAlwaysOnTopChecked;
-
-
-void ButtonToolTip(HWND hWnd, HWND button);
+LRESULT isAlwaysOnTopChecked = 0;
 
 
 
@@ -56,14 +52,14 @@ void AutoClickerButtons(HWND hWnd, HINSTANCE hInstance)
 	GetTextExtentPoint32(
 		hdcCheckBox,
 		"Activate Mouse ",
-		static_cast<int>(_tcslen("Activate Mouse ")),
+		STRLEN_INT("Activate Mouse "),
 		&textSize);
 
 	activateMouseCheckBox = CreateWindow(
 		"BUTTON", "Activate Mouse",
-		WS_VISIBLE | WS_TABSTOP | WS_CHILD | BS_AUTOCHECKBOX,
-		140.0 * DPIScale(), 6.0 * DPIScale(),
-		textSize.cx * DPIScale(), 22.0 * DPIScale(),
+		BS_AUTOCHECKBOX | WS_CHILD | WS_TABSTOP | WS_VISIBLE,
+		DPIScale(140), DPIScale(6),
+		DPIScale(textSize.cx), DPIScale(22),
 		hWnd, (HMENU)ACTIVATEMOUSE, hInstance, NULL
 	);
 	SendMessage(activateMouseCheckBox, BM_SETCHECK, BST_CHECKED, 0);
@@ -71,50 +67,52 @@ void AutoClickerButtons(HWND hWnd, HINSTANCE hInstance)
 
 	mouseLmB = CreateWindow(
 		"COMBOBOX", NULL,
-		WS_VISIBLE | WS_TABSTOP | WS_CHILD | CBS_DROPDOWNLIST | WS_VSCROLL,
-		155.0 * DPIScale(), 65.0 * DPIScale(),
-		90.0 * DPIScale(), 3.0 * 30.0 * DPIScale(),
+		CBS_DROPDOWNLIST | WS_VSCROLL | WS_CHILD | WS_TABSTOP | WS_VISIBLE,
+		DPIScale(155), DPIScale(59),
+		DPIScale(90), DPIScale(30 * 3),
 		hWnd, (HMENU)MOUSELMB, hInstance, NULL
 	);
-	SendMessage(mouseLmB, CB_ADDSTRING, 0, (LPARAM)"Left");
-	SendMessage(mouseLmB, CB_ADDSTRING, 0, (LPARAM)"Middle");
-	SendMessage(mouseLmB, CB_ADDSTRING, 0, (LPARAM)"Right");
+	const char* mouseLmBArray[] = {"Left", "Right", "Middle"};
+	for (int i = 0; i < (sizeof(mouseLmBArray)/sizeof(mouseLmBArray[0])); ++i)
+		SendMessage(mouseLmB, CB_ADDSTRING, 0, (LPARAM)mouseLmBArray[i]);
+
 	SendMessage(mouseLmB, CB_SETCURSEL, 0, 0);
 
 
-	mouseSingleOrDouble = CreateWindow(
+	mouseClickType = CreateWindow(
 		"COMBOBOX", NULL,
-		WS_VISIBLE | WS_TABSTOP | WS_CHILD | CBS_DROPDOWNLIST | WS_VSCROLL,
-		155.0 * DPIScale(), 95.0 * DPIScale(),
-		90.0 * DPIScale(), 3.0 * 30.0 * DPIScale(),
-		hWnd, (HMENU)MOUSESINGLEORDOUBLE, hInstance, NULL
+		CBS_DROPDOWNLIST | WS_VSCROLL | WS_CHILD | WS_TABSTOP | WS_VISIBLE,
+		DPIScale(155), DPIScale(89),
+		DPIScale(90), DPIScale(30 * 3),
+		hWnd, (HMENU)MOUSECLICKTYPE, hInstance, NULL
 	);
-	SendMessage(mouseSingleOrDouble, CB_ADDSTRING, 0, (LPARAM)"Single (x1)");
-	SendMessage(mouseSingleOrDouble, CB_ADDSTRING, 0, (LPARAM)"Double (x2)");
-	SendMessage(mouseSingleOrDouble, CB_ADDSTRING, 0, (LPARAM)"Xtra (x16)");
-	SendMessage(mouseSingleOrDouble, CB_SETCURSEL, 0, 0);
+	const char* clickTypeArray[] = {"Single (x1)", "Double (x2)", "Hold"};
+	for (int i = 0; i < (sizeof(clickTypeArray)/sizeof(clickTypeArray[0])); ++i)
+		SendMessage(mouseClickType, CB_ADDSTRING, 0, (LPARAM)clickTypeArray[i]);
+
+	SendMessage(mouseClickType, CB_SETCURSEL, 0, 0);
 
 
 
 	mouseRepeatInfinity = CreateWindow(
 		"BUTTON", "Infinity",
-		WS_GROUP | BS_AUTORADIOBUTTON | WS_VISIBLE | WS_TABSTOP | WS_CHILD,
-		272.0 * DPIScale(), 62.0 * DPIScale(),
-		60.0 * DPIScale(), 20.0 * DPIScale(),
+		BS_AUTORADIOBUTTON | WS_GROUP | WS_CHILD | WS_TABSTOP | WS_VISIBLE,
+		DPIScale(272), DPIScale(62),
+		DPIScale(60), DPIScale(20),
 		hWnd, (HMENU)MOUSEREPEATINFINITY, hInstance, NULL);
 
 	mouseRepeatTimes = CreateWindow(
 		"BUTTON", "",
-		BS_AUTORADIOBUTTON | WS_VISIBLE | WS_TABSTOP | WS_CHILD,
-		272.0 * DPIScale(), 92.0 * DPIScale(),
-		15.0 * DPIScale(), 20.0 * DPIScale(),
+		BS_AUTORADIOBUTTON | WS_CHILD | WS_TABSTOP | WS_VISIBLE,
+		DPIScale(272), DPIScale(92),
+		DPIScale(15), DPIScale(20),
 		hWnd, (HMENU)MOUSEREPEATTIMES, hInstance, NULL);
 
-	mouseRepeatTimer = CreateWindow(
+	mouseCountdown = CreateWindow(
 		"BUTTON", "Countdown",
-		BS_AUTORADIOBUTTON | WS_VISIBLE | WS_TABSTOP | WS_CHILD,
-		272.0 * DPIScale(), 122.0 * DPIScale(),
-		82.0 * DPIScale(), 20.0 * DPIScale(),
+		BS_AUTORADIOBUTTON | WS_CHILD | WS_TABSTOP | WS_VISIBLE,
+		DPIScale(272), DPIScale(122),
+		DPIScale(82), DPIScale(20),
 		hWnd, (HMENU)MOUSEREPEATCOUNTDOWN, hInstance, NULL);
 
 	SendMessage(mouseRepeatInfinity, BM_SETCHECK, BST_CHECKED, 0);
@@ -123,44 +121,44 @@ void AutoClickerButtons(HWND hWnd, HINSTANCE hInstance)
 
 	mouseClickStart = CreateWindow(
 		"BUTTON", "Start",
-		BS_PUSHBUTTON | WS_VISIBLE | WS_TABSTOP | WS_CHILD,
-		175.0 * DPIScale(), 133.0 * DPIScale(),
-		50.0 * DPIScale(), 22.0 * DPIScale(),
+		BS_PUSHBUTTON | WS_CHILD | WS_TABSTOP | WS_VISIBLE,
+		DPIScale(175), DPIScale(133),
+		DPIScale(50), DPIScale(22),
 		hWnd, (HMENU)MOUSECLICKSTARTBUTTON, hInstance, NULL
 	);
 
 	mouseClickStop = CreateWindow(
 		"BUTTON", "Stop",
-		BS_PUSHBUTTON | WS_DISABLED | WS_VISIBLE | WS_TABSTOP | WS_CHILD,
-		175.0 * DPIScale(), 155.0 * DPIScale(),
-		50.0 * DPIScale(), 22.0 * DPIScale(),
+		BS_PUSHBUTTON | WS_CHILD | WS_TABSTOP | WS_VISIBLE | WS_DISABLED,
+		DPIScale(175), DPIScale(155),
+		DPIScale(50), DPIScale(22),
 		hWnd, (HMENU)MOUSECLICKSTOPBUTTON, hInstance, NULL
 	);
 
 	mouseHotkeyButton = CreateWindow(
 		"BUTTON", "Hotkey: F5",
-		WS_VISIBLE | WS_TABSTOP | WS_CHILD | BS_CENTER | BS_MULTILINE,
-		4.0 * DPIScale(), 133.0 * DPIScale(),
-		122.0 * DPIScale(), 44.0 * DPIScale(),
+		BS_CENTER | BS_MULTILINE | WS_CHILD | WS_TABSTOP | WS_VISIBLE,
+		DPIScale(4), DPIScale(133),
+		DPIScale(122), DPIScale(44),
 		hWnd, (HMENU)MOUSECLICKHOTKEYBUTTON, hInstance, NULL
 	);
 }
 
 
 
-void KeyboardPresserButtons(HWND hWnd, HINSTANCE hInstance)
+void AutoPresserButtons(HWND hWnd, HINSTANCE hInstance)
 {
 	GetTextExtentPoint32(
 		hdcCheckBox,
 		"Activate Keyboard ",
-		static_cast<int>(_tcslen("Activate Keyboard ")),
+		STRLEN_INT("Activate Keyboard "),
 		&textSize);
 
 	activateKeyboardCheckBox = CreateWindow(
 		"BUTTON", "Activate Keyboard",
-		WS_VISIBLE | WS_TABSTOP | WS_CHILD | BS_AUTOCHECKBOX,
-		140.0 * DPIScale(), 188.0 * DPIScale(),
-		textSize.cx * DPIScale(), 22.0 * DPIScale(),
+		BS_AUTOCHECKBOX | WS_CHILD | WS_TABSTOP | WS_VISIBLE,
+		DPIScale(140), DPIScale(188),
+		DPIScale(textSize.cx), DPIScale(22),
 		hWnd, (HMENU)ACTIVATEKEYBOARD, hInstance, NULL
 	);
 	SendMessage(activateKeyboardCheckBox, BM_SETCHECK, BST_UNCHECKED, 0);
@@ -169,44 +167,57 @@ void KeyboardPresserButtons(HWND hWnd, HINSTANCE hInstance)
 
 	keyboardSelectedKey = (isWindowsNT())
 		?
-		CreateWindowW(
-		L"COMBOBOX", NULL,
-		CBS_DROPDOWNLIST | WS_DISABLED | WS_VISIBLE | WS_TABSTOP | WS_CHILD | WS_VSCROLL,
-		155.0 * DPIScale(), 247.0 * DPIScale(),
-		90.0 * DPIScale(), 250.0 * DPIScale(),
+		CreateWindowW(L"COMBOBOX", NULL,
+		CBS_DROPDOWNLIST | WS_VSCROLL | WS_CHILD | WS_TABSTOP | WS_VISIBLE | WS_DISABLED,
+		DPIScale(155), DPIScale(241),
+		DPIScale(90), DPIScale(250),
 		hWnd, (HMENU)KEYBOARDSELECTAUTOMATEDKEY, hInstance, NULL)
 		:
-		CreateWindowA(
-		"COMBOBOX", NULL,
-		CBS_DROPDOWNLIST | WS_DISABLED | WS_VISIBLE | WS_TABSTOP | WS_CHILD | WS_VSCROLL,
-		155.0 * DPIScale(), 247.0 * DPIScale(),
-		90.0 * DPIScale(), 250.0 * DPIScale(),
+		CreateWindowA("COMBOBOX", NULL,
+		CBS_DROPDOWNLIST | WS_VSCROLL | WS_CHILD | WS_TABSTOP | WS_VISIBLE | WS_DISABLED,
+		DPIScale(155), DPIScale(241),
+		DPIScale(90), DPIScale(250),
 		hWnd, (HMENU)KEYBOARDSELECTAUTOMATEDKEY, hInstance, NULL);
 
 	PopulateComboBox(keyboardSelectedKey, GetKeyboardLayout(GetCurrentThreadId()));
 	keyboardKey = GetKeyboardKey(keyboardSelectedKey);
 
 
+	GetTextExtentPoint32(
+		hdcCheckBox,
+		"Hold",
+		STRLEN_INT("Hold  "),
+		&textSize);
+
+	keyboardHoldCheckBox = CreateWindow(
+		"BUTTON", "Hold",
+		BS_AUTOCHECKBOX | WS_CHILD | WS_TABSTOP | WS_VISIBLE | WS_DISABLED,
+		DPIScale(176), DPIScale(270),
+		DPIScale(textSize.cx), DPIScale(22),
+		hWnd, (HMENU)KEYBOARDHOLDCHECKBOX, hInstance, NULL
+	);
+
+
 
 	keyboardRepeatInfinity = CreateWindow(
 		"BUTTON", "Infinity",
-		BS_AUTORADIOBUTTON | WS_DISABLED | WS_VISIBLE | WS_CHILD | WS_GROUP,
-		272.0 * DPIScale(), 244.0 * DPIScale(),
-		60.0 * DPIScale(), 20.0 * DPIScale(),
+		BS_AUTORADIOBUTTON | WS_GROUP | WS_VISIBLE | WS_CHILD | WS_TABSTOP | WS_DISABLED,
+		DPIScale(272), DPIScale(244),
+		DPIScale(60), DPIScale(20),
 		hWnd, (HMENU)KEYBOARDREPEATINFINITY, hInstance, NULL);
 
 	keyboardRepeatTimes = CreateWindow(
 		"BUTTON", "",
-		BS_AUTORADIOBUTTON | WS_DISABLED | WS_VISIBLE | WS_CHILD,
-		272.0 * DPIScale(), 274.0 * DPIScale(),
-		15.0 * DPIScale(), 20.0 * DPIScale(),
+		BS_AUTORADIOBUTTON | WS_VISIBLE | WS_CHILD | WS_TABSTOP | WS_DISABLED,
+		DPIScale(272), DPIScale(274),
+		DPIScale(15), DPIScale(20),
 		hWnd, (HMENU)KEYBOARDREPEATTIMES, hInstance, NULL);
 
-	keyboardRepeatTimer = CreateWindow(
+	keyboardCountdown = CreateWindow(
 		"BUTTON", "Countdown",
-		WS_DISABLED | BS_AUTORADIOBUTTON | WS_VISIBLE | WS_CHILD,
-		272.0 * DPIScale(), 304.0 * DPIScale(),
-		82.0 * DPIScale(), 20.0 * DPIScale(),
+		BS_AUTORADIOBUTTON | WS_VISIBLE | WS_CHILD | WS_TABSTOP | WS_DISABLED,
+		DPIScale(272), DPIScale(304),
+		DPIScale(82), DPIScale(20),
 		hWnd, (HMENU)KEYBOARDREPEATCOUNTDOWN, hInstance, NULL);
 
 	SendMessage(keyboardRepeatInfinity, BM_SETCHECK, BST_CHECKED, 0);
@@ -215,35 +226,26 @@ void KeyboardPresserButtons(HWND hWnd, HINSTANCE hInstance)
 
 	keyboardPressStart = CreateWindow(
 		"BUTTON", "Start",
-		WS_DISABLED | WS_VISIBLE | WS_TABSTOP | WS_CHILD | BS_PUSHBUTTON,
-		175.0 * DPIScale(), 315.0 * DPIScale(),
-		50.0 * DPIScale(), 22.0 * DPIScale(),
-		hWnd,
-		(HMENU)KEYBOARDPRESSSTARTBUTTON,
-		hInstance,
-		NULL
+		BS_PUSHBUTTON | WS_CHILD | WS_TABSTOP | WS_VISIBLE | WS_DISABLED,
+		DPIScale(175), DPIScale(315),
+		DPIScale(50), DPIScale(22),
+		hWnd, (HMENU)KEYBOARDPRESSSTARTBUTTON, hInstance, NULL
 	);
 
 	keyboardPressStop = CreateWindow(
 		"BUTTON", "Stop",
-		WS_DISABLED | WS_VISIBLE | WS_TABSTOP | WS_CHILD | BS_PUSHBUTTON,
-		175.0 * DPIScale(), 337.0 * DPIScale(),
-		50.0 * DPIScale(), 22.0 * DPIScale(),
-		hWnd,
-		(HMENU)KEYBOARDPRESSSTOPBUTTON,
-		hInstance,
-		NULL
+		BS_PUSHBUTTON | WS_CHILD | WS_TABSTOP | WS_VISIBLE | WS_DISABLED,
+		DPIScale(175), DPIScale(337),
+		DPIScale(50), DPIScale(22),
+		hWnd, (HMENU)KEYBOARDPRESSSTOPBUTTON, hInstance, NULL
 	);
 
 	keyboardHotkeyButton = CreateWindow(
 		"BUTTON", "Hotkey: F6",
-		WS_VISIBLE | WS_TABSTOP | WS_CHILD | BS_CENTER | BS_MULTILINE,
-		4.0 * DPIScale(), 315.0 * DPIScale(),
-		122.0 * DPIScale(), 44.0 * DPIScale(),
-		hWnd,
-		(HMENU)KEYBOARDPRESSHOTKEYBUTTON,
-		hInstance,
-		NULL
+		BS_CENTER | BS_MULTILINE | WS_CHILD | WS_TABSTOP | WS_VISIBLE,
+		DPIScale(4), DPIScale(315),
+		DPIScale(122), DPIScale(44),
+		hWnd, (HMENU)KEYBOARDPRESSHOTKEYBUTTON, hInstance, NULL
 	);
 }
 
@@ -253,79 +255,62 @@ void SettingsButtons(HWND hWnd, HINSTANCE hInstance)
 {
 	infoButton = CreateWindow(
 		"BUTTON", 0,
-		WS_VISIBLE | WS_TABSTOP | WS_CHILD | BS_ICON,
-		373.0 * DPIScale(), 254.0 * DPIScale(),
-		24.0 * DPIScale(), 24.0 * DPIScale(),
-		hWnd,
-		(HMENU)INFOBUTTON,
-		hInstance,
-		NULL
+		BS_ICON | WS_CHILD | WS_TABSTOP | WS_VISIBLE,
+		DPIScale(373), DPIScale(254),
+		DPIScale(24), DPIScale(24),
+		hWnd, (HMENU)INFOBUTTON, hInstance, NULL
 	);
-	ButtonToolTip(hWnd, infoButton);
-	HICON infoIcon = (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_INFO), IMAGE_ICON, 24.0 * DPIScale(), 24.0 * DPIScale(), LR_CREATEDIBSECTION);
+	HICON infoIcon = (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_INFO), IMAGE_ICON, DPIScale(24), DPIScale(24), LR_CREATEDIBSECTION);
 	SendMessage(infoButton, BM_SETIMAGE, IMAGE_ICON, (LPARAM)infoIcon);
 
 
 	loadScriptsButton = CreateWindow(
 		"BUTTON", 0,
-		WS_VISIBLE | WS_TABSTOP | WS_CHILD | BS_ICON,
-		373.0 * DPIScale(), 281.0 * DPIScale(),
-		24.0 * DPIScale(), 24.0 * DPIScale(),
-		hWnd,
-		(HMENU)LOADSCRIPTSBUTTON,
-		hInstance,
-		NULL
+		BS_ICON | WS_CHILD | WS_TABSTOP | WS_VISIBLE,
+		DPIScale(373), DPIScale(281),
+		DPIScale(24), DPIScale(24),
+		hWnd, (HMENU)LOADSCRIPTSBUTTON, hInstance, NULL
 	);
-	ButtonToolTip(hWnd, loadScriptsButton);
-	HICON loadScriptsIcon = (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_LOADSCRIPT), IMAGE_ICON, 18.0 * DPIScale(), 18.0 * DPIScale(), LR_CREATEDIBSECTION);
+	HICON loadScriptsIcon = (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_LOADSCRIPT), IMAGE_ICON, DPIScale(18), DPIScale(18), LR_CREATEDIBSECTION);
 	SendMessage(loadScriptsButton, BM_SETIMAGE, IMAGE_ICON, (LPARAM)loadScriptsIcon);
 
 
 	saveScriptsButton = CreateWindow(
 		"BUTTON", 0,
-		WS_VISIBLE | WS_TABSTOP | WS_CHILD | BS_ICON,
-		373.0 * DPIScale(), 308.0 * DPIScale(),
-		24.0 * DPIScale(), 24.0 * DPIScale(),
-		hWnd,
-		(HMENU)SAVESCRIPTSBUTTON,
-		hInstance,
-		NULL
+		BS_ICON | WS_CHILD | WS_TABSTOP | WS_VISIBLE,
+		DPIScale(373), DPIScale(308),
+		DPIScale(24), DPIScale(24),
+		hWnd, (HMENU)SAVESCRIPTSBUTTON, hInstance, NULL
 	);
-	ButtonToolTip(hWnd, saveScriptsButton);
-	HICON saveScriptsIcon = (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_SAVESCRIPT), IMAGE_ICON, 18.0 * DPIScale(), 18.0 * DPIScale(), LR_CREATEDIBSECTION);
+	HICON saveScriptsIcon = (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_SAVESCRIPT), IMAGE_ICON, DPIScale(18), DPIScale(18), LR_CREATEDIBSECTION);
 	SendMessage(saveScriptsButton, BM_SETIMAGE, IMAGE_ICON, (LPARAM)saveScriptsIcon);
 
 
 	settingsButton = CreateWindow(
 		"BUTTON", 0,
-		WS_VISIBLE | WS_TABSTOP | WS_CHILD | BS_ICON,
-		373.0 * DPIScale(), 335.0 * DPIScale(),
-		24.0 * DPIScale(), 24.0 * DPIScale(),
-		hWnd,
-		(HMENU)SETTINGSBUTTON,
-		hInstance,
-		NULL
+		BS_ICON | WS_CHILD | WS_TABSTOP | WS_VISIBLE,
+		DPIScale(373), DPIScale(335),
+		DPIScale(24), DPIScale(24),
+		hWnd, (HMENU)SETTINGSBUTTON, hInstance, NULL
 	);
-	ButtonToolTip(hWnd, settingsButton);
-	HICON settingsIcon = (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_SETTINGS), IMAGE_ICON, 16.0 * DPIScale(), 16.0 * DPIScale(), LR_CREATEDIBSECTION);
+	HICON settingsIcon = (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_SETTINGS), IMAGE_ICON, DPIScale(16), DPIScale(16), LR_CREATEDIBSECTION);
 	SendMessage(settingsButton, BM_SETIMAGE, IMAGE_ICON, (LPARAM)settingsIcon);
 
 
 
 	themesList = CreateWindow(
 		"COMBOBOX", NULL,
-		CBS_DROPDOWNLIST | CBS_AUTOHSCROLL | WS_HSCROLL | WS_TABSTOP | WS_CHILD,
-		132.0 * DPIScale(), 59.0 * DPIScale(),
-		136.0 * DPIScale(), 5.0 * 25.0 * DPIScale(),
+		CBS_DROPDOWNLIST | CBS_AUTOHSCROLL | WS_HSCROLL | WS_CHILD | WS_TABSTOP,
+		DPIScale(132), DPIScale(59),
+		DPIScale(136), DPIScale(25 * 8),
 		hWnd, (HMENU)THEMESLISTCOMBOBOX, hInstance, NULL
 	);
 
-	const TCHAR* themes[] =
-	{
-		"Default", "Burlywood", "Gold", "Gray", "Lilac", "Soccer Pitch", "Oceanic"
-	};
-
-	for (int i = 0; i < (sizeof(themes)/sizeof(themes[0])); ++i)
+	const char* themes[] = {
+	"Default", "Burlywood", "Gold", "Gray",
+	"Magic Flower", "Rocket", "Soccer Pitch", "Oceanic"
+};
+	for (int i = 0; i < sizeof(themes)/sizeof(themes[0]); i++)
 		SendMessage(themesList, CB_ADDSTRING, 0, (LPARAM)themes[i]);
 	SendMessage(themesList, CB_SETCURSEL, 0, 0);
 
@@ -333,62 +318,67 @@ void SettingsButtons(HWND hWnd, HINSTANCE hInstance)
 
 	GetTextExtentPoint32(
 		hdcCheckBox,
-		"Minimize on System Tray",
-		static_cast<int>(_tcslen("Minimize on System Tray")),
+		"Always on Top",
+		STRLEN_INT("Always on Top"),
 		&textSize);
 
-	minimizeOnTray = CreateWindow(
-		"BUTTON", "Minimize on System Tray",
-		BS_AUTOCHECKBOX | WS_TABSTOP | WS_CHILD,
-		120.0 * DPIScale(), 100.0 * DPIScale(),
-		textSize.cx * DPIScale(), 22.0 * DPIScale(),
-		hWnd,
-		(HMENU)MINIMIZEONTRAY,
-		hInstance,
-		NULL
+	alwaysOnTop = CreateWindow(
+		"BUTTON", "Always on Top",
+		BS_AUTOCHECKBOX | WS_CHILD | WS_TABSTOP,
+		DPIScale(120), DPIScale(165),
+		DPIScale(textSize.cx), DPIScale(22),
+		hWnd, (HMENU)ALWAYSONTOP, hInstance, NULL
 	);
 
 
 	GetTextExtentPoint32(
 		hdcCheckBox,
-		"Always on Top",
-		static_cast<int>(_tcslen("Always on Top")),
+		"Minimize on System Tray",
+		STRLEN_INT("Minimize on System Tray"),
 		&textSize);
 
-	alwaysOnTop = CreateWindow(
-		"BUTTON", "Always on Top",
-		BS_AUTOCHECKBOX | WS_TABSTOP | WS_CHILD,
-		120.0 * DPIScale(), 125.0 * DPIScale(),
-		textSize.cx * DPIScale(), 22.0 * DPIScale(),
-		hWnd,
-		(HMENU)ALWAYSONTOP,
-		hInstance,
-		NULL
+	minimizeOnTray = CreateWindow(
+		"BUTTON", "Minimize on System Tray",
+		BS_AUTOCHECKBOX | WS_CHILD | WS_TABSTOP,
+		DPIScale(120), DPIScale(190),
+		DPIScale(textSize.cx), DPIScale(22),
+		hWnd, (HMENU)MINIMIZEONTRAY, hInstance, NULL
+	);
+
+
+	GetTextExtentPoint32(
+		hdcCheckBox,
+		"Disable tooltips",
+		STRLEN_INT("Disable tooltips"),
+		&textSize);
+
+	disableTooltips = CreateWindow(
+		"BUTTON", "Disable tooltips",
+		BS_AUTOCHECKBOX | WS_CHILD | WS_TABSTOP,
+		DPIScale(120), DPIScale(215),
+		DPIScale(textSize.cx), DPIScale(22),
+		hWnd, (HMENU)DISABLETOOLTIPS, hInstance, NULL
 	);
 
 
 	debugHotkeyButton = CreateWindow(
 		"BUTTON", "Find HEX keycode",
-		BS_PUSHBUTTON | WS_TABSTOP | WS_CHILD,
-		119.0 * DPIScale(), 247.0 * DPIScale(),
-		162.0 * DPIScale(), 44.0 * DPIScale(),
-		hWnd,
-		(HMENU)DEBUGHOTKEYBUTTON,
-		hInstance,
-		NULL
+		BS_PUSHBUTTON | WS_CHILD | WS_TABSTOP,
+		DPIScale(119), DPIScale(247),
+		DPIScale(162), DPIScale(44),
+		hWnd, (HMENU)DEBUGHOTKEYBUTTON, hInstance, NULL
 	);
 
 
 	backToMainButton = CreateWindow(
 		"BUTTON", "Back",
-		BS_PUSHBUTTON | WS_TABSTOP | WS_CHILD,
-		175.0 * DPIScale(), 315.0 * DPIScale(),
-		50.0 * DPIScale(), 44.0 * DPIScale(),
-		hWnd,
-		(HMENU)BACKTOMAINBUTTON,
-		hInstance,
-		NULL
+		BS_PUSHBUTTON | WS_CHILD | WS_TABSTOP,
+		DPIScale(175), DPIScale(315),
+		DPIScale(50), DPIScale(44),
+		hWnd, (HMENU)BACKTOMAINBUTTON, hInstance, NULL
 	);
+
+	DeleteObject(hdcCheckBox);
 }
 
 
@@ -396,37 +386,6 @@ void SettingsButtons(HWND hWnd, HINSTANCE hInstance)
 void LoadingButtons(HWND hWnd, HINSTANCE hInstance)
 {
 	AutoClickerButtons(hWnd, hInstance);
-	KeyboardPresserButtons(hWnd, hInstance);
+	AutoPresserButtons(hWnd, hInstance);
 	SettingsButtons(hWnd, hInstance);
-}
-
-
-
-void ButtonToolTip(HWND hWnd, HWND button)
-{
-	tooltipWindow = CreateWindowEx(
-		WS_EX_TOPMOST, TOOLTIPS_CLASS,
-		NULL, TTS_NOPREFIX,
-		0, 0, 0, 0,
-		hWnd, NULL, NULL, NULL);
-
-	TOOLINFO infoWnd;
-	infoWnd.cbSize = sizeof(TOOLINFO);
-	infoWnd.hinst = GetModuleHandle(NULL);
-	infoWnd.hwnd = button;
-	infoWnd.uFlags = TTF_SUBCLASS;
-	infoWnd.uId = (UINT_PTR)button;
-	infoWnd.lpszText =
-	(
-		(button == infoButton)
-		? "Read the Web Manual"
-		: (button == loadScriptsButton)
-		? "Load hotkeys"
-		: (button == saveScriptsButton)
-		? "Save hotkeys as .ini file"
-		: "Settings"
-	);
-
-	GetClientRect(button, &infoWnd.rect);
-	SendMessage(tooltipWindow, TTM_ADDTOOL, 0, (LPARAM)&infoWnd);
 }
