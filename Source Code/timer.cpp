@@ -16,6 +16,8 @@ keyboardTimerDuration = 1000,
 randIntervalValue = 0,
 holdTimeValue = 0;
 
+static bool holdDoubleNow = false;
+
 
 MMRESULT timers[8] = {0};
 
@@ -339,9 +341,20 @@ int SetAutomationInterval(HWND hWnd, int mod)
 				break;
 			}
 			case DOUBLE:
-				DoubleClick();
-				timers[CLICKER] = timeSetEvent(*timerDuration + RandomInterval(), 0, ClickerProc, (DWORD_PTR)hWnd, TIME_PERIODIC);
+			{
+				if (holdTimeValue == 0)
+				{
+					DoubleClick();
+					timers[CLICKER] = timeSetEvent(*timerDuration + RandomInterval(), 0, ClickerProc, (DWORD_PTR)hWnd, TIME_PERIODIC);
+				}
+				else
+				{
+					holdDoubleNow = false;
+					HoldClickProc(0,0, (DWORD_PTR)hWnd,0,0);
+				}
+
 				break;
+			}
 			case HOLD:
 				HoldMouse();
 				break;
@@ -395,12 +408,11 @@ VOID CALLBACK HoldClickProc(UINT id, UINT msg, DWORD_PTR dwUser, DWORD_PTR dw1, 
 	if (clickType == SINGLE)
 		timers[RELEASECLICK] = timeSetEvent(holdTimeValue, 0, ReleaseClickProc, dwUser, TIME_ONESHOT);
 	else if (clickType == DOUBLE)
-		timers[RELEASECLICK] = timeSetEvent(holdTimeValue/2, 0, ReleaseClickProc, dwUser, TIME_ONESHOT);
+		timers[RELEASECLICK] = timeSetEvent(holdTimeValue/3, 0, ReleaseClickProc, dwUser, TIME_ONESHOT);
 }
 
 VOID CALLBACK ReleaseClickProc(UINT id, UINT msg, DWORD_PTR dwUser, DWORD_PTR dw1, DWORD_PTR dw2)
 {
-	static bool holdDoubleNow = false;
 	holdingMouseInProgress = false;
 	switch(clickType)
 	{
@@ -437,7 +449,7 @@ VOID CALLBACK ReleaseClickProc(UINT id, UINT msg, DWORD_PTR dwUser, DWORD_PTR dw
 				}
 			}
 			holdDoubleNow = !holdDoubleNow;
-			timers[HOLDCLICK] = timeSetEvent(holdDoubleNow ? holdTimeValue/2 : (mouseTimerDuration + RandomInterval() - holdTimeValue), 0, HoldClickProc, dwUser, TIME_ONESHOT);
+			timers[HOLDCLICK] = timeSetEvent(holdDoubleNow ? holdTimeValue/3 : (mouseTimerDuration + RandomInterval() - holdTimeValue), 0, HoldClickProc, dwUser, TIME_ONESHOT);
 			break;
 		}
 	}
