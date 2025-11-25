@@ -7,15 +7,15 @@ KB65 Autoclicker is an open-source autoclicker and autopresser
 software. It automates mouse clicks and keyboard key presses
 together.
 
-- Left-Middle-Right mouse buttons can be used with Single/Double click & “Xtra click (16 clicks at once)” modes.
-- Random Interval and Hold Time options for gamers.
+- Left-Middle-Right mouse buttons can be used with Single/Double click & Hold modes.
+- Random Interval and Hold Time options are included.
 - Autopresser mode is compatible with various keyboard
 layouts (AZERTY, QWERTZ, DVORAK etc.)
 - Repeat times can be infinite or a specific number. Also you
 can set a countdown timer for any duration up to 100
 hours.
 - Load/Save your settings to an .ini file for future use.
-- Includes 6 additional themes to jazz up your appearance.
+- Includes 7 additional themes to jazz up your appearance.
 - Runs on Windows 98/ME and all later versions, including
 Windows 10 and 11.
 
