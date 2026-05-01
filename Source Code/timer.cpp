@@ -1,4 +1,5 @@
 #include "KB65 Autoclicker.h"
+#include <time.h>
 
 
 
@@ -40,7 +41,25 @@ VOID CALLBACK PresserTicktockProc(UINT id, UINT msg, DWORD_PTR dwUser, DWORD_PTR
 
 inline int RandomInterval()
 {
-	return ((rand() % (2 * randIntervalValue + 1)) - randIntervalValue);
+	if (isWindowsXPLater())
+	{
+		unsigned int num;
+
+		if (rand_s(&num) == 0)
+			return (int)(num % (2 * randIntervalValue + 1)) - randIntervalValue;
+		else
+			return 0;
+	}
+	else // rand_s() is only available on Windows XP and later. Use rand() instead, to prevent "illegal operations"
+	{
+		static bool srandInitialized = false;
+		if (!srandInitialized)
+		{
+			srand(GetTickCount());
+			srandInitialized = true;
+		}
+		return ((rand() % (2 * randIntervalValue + 1)) - randIntervalValue);
+	}
 }
 
 

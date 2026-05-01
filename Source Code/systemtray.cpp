@@ -1,5 +1,4 @@
 #include "KB65 Autoclicker.h"
-#include <shellapi.h>
 
 
 

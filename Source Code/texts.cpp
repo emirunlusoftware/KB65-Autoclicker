@@ -7,28 +7,28 @@
 void AutoClickerTexts(HDC hdc)
 {
 	TextOut(hdc,
-		DPIScale(58),
-		DPIScale(30),
+		DPI::Scale(58),
+		DPI::Scale(30),
 		"hours", STRLEN_INT("hours"));
 
 	TextOut(hdc,
-		DPIScale(58),
-		DPIScale(54),
+		DPI::Scale(58),
+		DPI::Scale(54),
 		"minutes", STRLEN_INT("minutes"));
 
 	TextOut(hdc,
-		DPIScale(58),
-		DPIScale(78),
+		DPI::Scale(58),
+		DPI::Scale(78),
 		"seconds", STRLEN_INT("seconds"));
 
 	TextOut(hdc,
-		DPIScale(58),
-		DPIScale(102),
+		DPI::Scale(58),
+		DPI::Scale(102),
 		"milliseconds", STRLEN_INT("milliseconds"));
 
-	// Display colons ( : ) between hour/minute/second edits.
+	// Display colons ( : ) between hour/minute/second editboxes.
 	for (int xPos = 297; xPos <= 329; xPos += 32)
-		TextOut(hdc, DPIScale(xPos), DPIScale(149), ":", 1);
+		TextOut(hdc, DPI::Scale(xPos), DPI::Scale(149), ":", 1);
 }
 
 
@@ -36,28 +36,28 @@ void AutoClickerTexts(HDC hdc)
 void KeyboardPresserTexts(HDC hdc)
 {
 	TextOut(hdc,
-		DPIScale(58),
-		DPIScale(212),
+		DPI::Scale(58),
+		DPI::Scale(212),
 		"hours", STRLEN_INT("hours"));
 
 	TextOut(hdc,
-		DPIScale(58),
-		DPIScale(236),
+		DPI::Scale(58),
+		DPI::Scale(236),
 		"minutes", STRLEN_INT("minutes"));
 
 	TextOut(hdc,
-		DPIScale(58),
-		DPIScale(260),
+		DPI::Scale(58),
+		DPI::Scale(260),
 		"seconds", STRLEN_INT("seconds"));
 
 	TextOut(hdc,
-		DPIScale(58),
-		DPIScale(284),
+		DPI::Scale(58),
+		DPI::Scale(284),
 		"milliseconds", STRLEN_INT("milliseconds"));
 
-	// Display colons ( : ) between hour/minute/second edits.
+	// Display colons ( : ) between hour/minute/second editboxes.
 	for (int xPos = 297; xPos <= 329; xPos += 32)
-		TextOut(hdc, DPIScale(xPos), DPIScale(331), ":", 1);
+		TextOut(hdc, DPI::Scale(xPos), DPI::Scale(331), ":", 1);
 }
 
 
@@ -75,8 +75,8 @@ void PageTexts(HDC hdc, int pageTexts)
 		case SETTINGSPAGE:
 		{
 			TextOut(hdc,
-				DPIScale(5), DPIScale(348),
-				"v1.0.2", STRLEN_INT("v1.0.2"));
+				DPI::Scale(5), DPI::Scale(348),
+				"v1.0.3", STRLEN_INT("v1.0.3"));
 			break;
 		}
 	}

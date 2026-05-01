@@ -12,7 +12,7 @@ UINT
 mouseSpecialKey = 0,
 mouseHotkey = VK_F5,
 
-keyboardKey	= VK_RETURN,
+keyboardKey	= '0',
 keyboardHotkey = VK_F6,
 keyboardSpecialKey = 0,
 keyboardHotkeyTemp = 0,
@@ -55,11 +55,15 @@ wchar_t* GetUnicodeChar(UINT vk)
 		VK_MENU, VK_LMENU, VK_RMENU
 	};
 
-	for (int i = 0; i < sizeof(controlKeysToClear)/sizeof(controlKeysToClear[0]); ++i)
+	for (size_t i = 0; i < sizeof(controlKeysToClear)/sizeof(controlKeysToClear[0]); ++i)
 		keyState[controlKeysToClear[i]] = 0;
 
 	UINT scanCode = MapVirtualKey(vk, 0);
-	ToUnicode(vk, scanCode, keyState, defaultChar, 3, 0);
+	int result = ToUnicode(vk, scanCode, keyState, defaultChar, 3, 0);
+
+	if (result == -1) // Dead key, try again.
+		ToUnicode(vk, scanCode, keyState, defaultChar, 3, 0);
+
 	defaultUnicodeHotkey[0] = defaultChar[0];
 	defaultUnicodeHotkey[1] = '\0';
 
@@ -80,11 +84,14 @@ char* GetAsciiChar(UINT vk)
 		VK_MENU, VK_LMENU, VK_RMENU
 	};
 
-	for (int i = 0; i < sizeof(controlKeysToClear)/sizeof(controlKeysToClear[0]); ++i)
+	for (size_t i = 0; i < sizeof(controlKeysToClear)/sizeof(controlKeysToClear[0]); ++i)
 		keyState[controlKeysToClear[i]] = 0;
 
 	UINT scanCode = MapVirtualKey(vk, 0);
-	ToAscii(vk, scanCode, keyState, win98Char, 0);
+	int result = ToAscii(vk, scanCode, keyState, win98Char, 0);
+	if (result == -1) // Dead key, try again.
+		ToAscii(vk, scanCode, keyState, win98Char, 0);
+
 	defaultAsciiHotkey[0] = win98Char[0];
 	defaultAsciiHotkey[1] = '\0';
 
@@ -95,7 +102,7 @@ char* GetAsciiChar(UINT vk)
 
 void GetHotkey(HWND hWnd, UINT *hotkey, bool *hotkeySelected, int selectMod)
 {
-	*hotkeySelected = FALSE;
+	*hotkeySelected = false;
 	specialKey = (selectMod == HOTKEYAUTOCLICKER)
 		? &mouseSpecialKey
 		: &keyboardSpecialKey;
@@ -120,7 +127,7 @@ void GetHotkey(HWND hWnd, UINT *hotkey, bool *hotkeySelected, int selectMod)
 					If you detect the keys such as:
 					• Some control buttons (includes ESC)
 					• A-Z, 0-9
-					• OEM buttons
+					• OEM buttons (a.k.a. special characters)
 				*/
 				if ((currentKey >= 0x08 && currentKey <= 0x14)
 					|| (currentKey >= 0x20 && currentKey <= 0x5A)
@@ -528,13 +535,161 @@ void GetHotkey(HWND hWnd, UINT *hotkey, bool *hotkeySelected, int selectMod)
 			*specialKey,
 			*hotkey);
 	}
+
+
+	// Let the program to leave the hotkeys free for your freely use:
+	{
+		// If all automations are disabled and you assigned new hotkey
+		// (regardless of the selected mode)
+		if (!mouseActive && !keyboardActive)
+		{
+			UnregisterHotKey(hWnd, MOUSECLICKHOTKEY);
+			UnregisterHotKey(hWnd, KEYBOARDPRESSHOTKEY);
+			return;
+		}
+
+		// If activate mouse is unchecked (a.k.a. autoclicker disabled) and you assigned new mouse hotkey
+		if (!mouseActive && selectMod == HOTKEYAUTOCLICKER)
+			UnregisterHotKey(hWnd, MOUSECLICKHOTKEY);
+
+		// If activate keyboard is unchecked (a.k.a. autopresser disabled) and you assigned new keyboard hotkey
+		if (!keyboardActive && selectMod == HOTKEYAUTOPRESSER)
+			UnregisterHotKey(hWnd, KEYBOARDPRESSHOTKEY);
+	}
+}
+
+
+
+void UpdateHotkeysAfterLangChange()
+{
+	for (UINT selectMod = HOTKEYAUTOCLICKER;
+		selectMod <= HOTKEYAUTOPRESSER;
+		selectMod += HOTKEYAUTOPRESSER - HOTKEYAUTOCLICKER)
+	{
+		const UINT otherKeysVkCodes[] =
+		{
+			VK_F1, VK_F2, VK_F3, VK_F4, VK_F5, VK_F6,  // F1 - F6
+			VK_F7, VK_F8, VK_F9, VK_F10, VK_F11, VK_F12, // F7 - F12
+
+			VK_NUMLOCK, VK_NUMPAD0, VK_NUMPAD1, VK_NUMPAD2, VK_NUMPAD3, VK_NUMPAD4, // Numpad (1)
+			VK_NUMPAD5, VK_NUMPAD6, VK_NUMPAD7, VK_NUMPAD8, VK_NUMPAD9, // Numpad (2)
+			VK_ADD, VK_SUBTRACT, VK_MULTIPLY, VK_DIVIDE, VK_DECIMAL,  // Numpad operations
+
+			VK_INSERT, VK_SNAPSHOT, VK_SCROLL, VK_PAUSE, VK_DELETE,  // Misc keys
+			VK_HOME, VK_END, VK_PRIOR, VK_NEXT, VK_CONTROL, VK_SHIFT, VK_MENU, // Navigation and modifiers
+			VK_UP, VK_DOWN, VK_LEFT, VK_RIGHT, VK_ESCAPE, VK_TAB, VK_CAPITAL, VK_SPACE, VK_RETURN, VK_BACK // Arrow keys and other controls
+		};
+
+		specialKey = (selectMod == HOTKEYAUTOCLICKER ? &mouseSpecialKey : &keyboardSpecialKey);
+		currentKey = (selectMod == HOTKEYAUTOCLICKER ? mouseHotkey : keyboardHotkey);
+
+
+		bool otherKeysFound = false;
+		for (size_t index = 0; index < sizeof(otherKeysVkCodes)/sizeof(otherKeysVkCodes[0]); ++index)
+		{
+			// If current hotkey is one of them, no need to update (a.k.a. skip updating).
+			if (currentKey == otherKeysVkCodes[index])
+			{
+				otherKeysFound = true;
+				break;
+			}
+		}
+		if (otherKeysFound)
+			continue;
+
+
+		if (isWindowsNT())
+		{
+			hotkeyTextW = GetUnicodeChar(currentKey);
+			// & is a special character, you need to write "&&" to display "&".
+			if (wcscmp(hotkeyTextW, L"&") == 0)
+				hotkeyTextW = L"&&";
+		}
+		else
+		{
+			hotkeyTextA = GetAsciiChar(currentKey);
+			// & is a special character, you need to write "&&" to display "&".
+			if (strcmp(hotkeyTextA, "&") == 0)
+				hotkeyTextA = "&&";
+		}
+
+
+		if (isWindowsNT())
+		{
+			hotkeySpecialTextW = (selectMod == HOTKEYAUTOCLICKER ? mouseHotkeySpecialTextW : keyboardHotkeySpecialTextW);
+			if (*specialKey == 0)
+			{
+				swprintf(hotkeyUnicodeBuffer, L"Hotkey: %ls", hotkeyTextW);
+				hotkeySpecialTextW = L"NULL";
+			}
+			else
+				swprintf(hotkeyUnicodeBuffer,  L"Hotkey: %ls + %ls", hotkeySpecialTextW, hotkeyTextW);
+
+			SetWindowTextW(selectMod == HOTKEYAUTOCLICKER ? mouseHotkeyButton : keyboardHotkeyButton, hotkeyUnicodeBuffer);
+
+			if (selectMod == HOTKEYAUTOCLICKER)
+			{
+				static WCHAR mouseHotkeyBufW[20], mouseHotkeySpecialBufW[12];
+
+				wcscpy(mouseHotkeyBufW, hotkeyTextW);
+				mouseHotkeyTextW = mouseHotkeyBufW;
+
+				wcscpy(mouseHotkeySpecialBufW, hotkeySpecialTextW);
+				mouseHotkeySpecialTextW = mouseHotkeySpecialBufW;
+			}
+			else
+			{
+				static WCHAR keyboardHotkeyBufW[20], keyboardHotkeySpecialBufW[12];
+
+				wcscpy(keyboardHotkeyBufW, hotkeyTextW);
+				keyboardHotkeyTextW = keyboardHotkeyBufW;
+
+				wcscpy(keyboardHotkeySpecialBufW, hotkeySpecialTextW);
+				keyboardHotkeySpecialTextW = keyboardHotkeySpecialBufW;
+			}
+		}
+		else
+		{
+			hotkeySpecialTextA = (selectMod == HOTKEYAUTOCLICKER ? mouseHotkeySpecialTextA : keyboardHotkeySpecialTextA);
+			if (*specialKey == 0)
+			{
+				sprintf(hotkeyAsciiBuffer, "Hotkey: %s", hotkeyTextA);
+				hotkeySpecialTextA = "NULL";
+			}
+			else
+				sprintf(hotkeyAsciiBuffer,  "Hotkey: %s + %s", hotkeySpecialTextA, hotkeyTextA);
+
+			SetWindowTextA(selectMod == HOTKEYAUTOCLICKER ? mouseHotkeyButton : keyboardHotkeyButton, hotkeyAsciiBuffer);
+
+			if (selectMod == HOTKEYAUTOCLICKER)
+			{
+				static char mouseHotkeyBufA[20], mouseHotkeySpecialBufA[12];
+
+				strcpy(mouseHotkeyBufA, hotkeyTextA);
+				mouseHotkeyTextA = mouseHotkeyBufA;
+
+				strcpy(mouseHotkeySpecialBufA, hotkeySpecialTextA);
+				mouseHotkeySpecialTextA = mouseHotkeySpecialBufA;
+			}
+			else
+			{
+				static char keyboardHotkeyBufA[20], keyboardHotkeySpecialBufA[12];
+
+				strcpy(keyboardHotkeyBufA, hotkeyTextA);
+				keyboardHotkeyTextA = keyboardHotkeyBufA;
+
+				strcpy(keyboardHotkeySpecialBufA, hotkeySpecialTextA);
+				keyboardHotkeySpecialTextA = keyboardHotkeySpecialBufA;
+			}
+		}
+	}
 }
 
 
 
 void LoadHotkey(HWND hWnd, int hotkeyMod);
 
-void LoadHotkeyW(HWND hWnd, WCHAR *hotkeySpecTxtW, UINT *specialKey, WCHAR *hotkeyTxtW, UINT *hotkey, int selectMod)
+void LoadHotkeyW(HWND hWnd, WCHAR *hotkeySpecTxtW, UINT *specialKey, WCHAR *hotkeyTxtW, int selectMod)
 {
 	if (*specialKey == 0)
 		swprintf(hotkeyUnicodeBuffer, L"Hotkey: %ls", hotkeyTxtW);
@@ -549,7 +704,7 @@ void LoadHotkeyW(HWND hWnd, WCHAR *hotkeySpecTxtW, UINT *specialKey, WCHAR *hotk
 
 
 
-void LoadHotkeyA(HWND hWnd, char *hotkeySpecTxtA, UINT *specialKey, char *hotkeyTxtA, UINT *hotkey, int selectMod)
+void LoadHotkeyA(HWND hWnd, char *hotkeySpecTxtA, UINT *specialKey, char *hotkeyTxtA, int selectMod)
 {
 	if (*specialKey == 0)
 		sprintf(hotkeyAsciiBuffer, "Hotkey: %s", hotkeyTxtA);
@@ -678,7 +833,7 @@ void DoubleClick()
 	int mouseEvent = 1 << (2 * mouseButton + 1);
 	INPUT mouseDoubleClick[4] = {0};
 
-	for (int index = 0; index < 4; index += 2)
+	for (size_t index = 0; index < 4; index += 2)
 	{
 		mouseDoubleClick[index].type = INPUT_MOUSE;
 		mouseDoubleClick[index].mi.dwFlags = mouseEvent;
@@ -714,7 +869,7 @@ void ReleaseMouse()
 void StartPressing(UINT keyboardKey)
 {
 	INPUT keyboardPress[3] = {0};
-	int index = 0;
+	size_t index = 0;
 
 	// ---Problem---
 	// Prevent to perform dangerous combinations like (CTRL + S, CTRL + W)
@@ -759,7 +914,7 @@ void StartPressing(UINT keyboardKey)
 void HoldKey()
 {
 	INPUT keyboardHold[2] = {0};
-	int index = 0;
+	size_t index = 0;
 
 	if (keyboardSpecialKey != 0)
 	{

@@ -5,24 +5,43 @@
 
 
 
-void LoadInit(HWND hWnd)
+void LoadIni(HWND hWnd, int mod, HDROP hDropFiles)
 {
 	if (isWindowsNT())
 	{
-		OPENFILENAMEW ofnLoadW = {0};
-		ZeroMemory(&ofnLoadW, sizeof(ofnLoadW));
 		WCHAR szFile[MAX_PATH] = L"";
-		ofnLoadW.lStructSize = sizeof(ofnLoadW);
+		OPENFILENAMEW ofnLoadW = {0};
+
+		if (mod == FROM_DROPFILES)
+		{
+			if (DragQueryFileW(hDropFiles, 0, szFile, MAX_PATH))
+			{
+				const wchar_t* extensionW = PathFindExtensionW(szFile);
+				if (_wcsicmp(extensionW, L".ini") == 0)
+				{
+					ofnLoadW.lpstrFile = szFile;
+					goto skip_gofn_func_for_dropfilesW;
+				}
+				else return;
+			}
+			else return;
+		}
+
+		// Windows NT 4.0 only
+		if (winverOld.dwMajorVersion == 4 && winverOld.dwMinorVersion == 0 && winverOld.dwPlatformId == VER_PLATFORM_WIN32_NT)
+			ofnLoadW.lStructSize = OPENFILENAME_SIZE_VERSION_400;
+		else
+			ofnLoadW.lStructSize = sizeof(ofnLoadW);
 		ofnLoadW.hwndOwner = hWnd;
 		ofnLoadW.lpstrFile = szFile;
-		ofnLoadW.lpstrFile[0] = L'\0';
 		ofnLoadW.nMaxFile = sizeof(szFile);
 		ofnLoadW.lpstrFilter = L"INI (*.ini)\0*.ini\0All Files\0*.*\0";
 		ofnLoadW.nFilterIndex = 1;
-		ofnLoadW.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+		ofnLoadW.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_EXPLORER;
 
 		if (GetOpenFileNameW(&ofnLoadW))
 		{
+skip_gofn_func_for_dropfilesW:
 			WCHAR bufLoadW[30];
 
 			static WCHAR
@@ -32,17 +51,17 @@ void LoadInit(HWND hWnd)
 			bufLoadKeyboardHotkeyW[20];
 
 
-			GetPrivateProfileStringW(L"Mouse", L"MouseHotkeySpecKeyName", L"", bufLoadMouseHotkeySpecW, sizeof(bufLoadMouseHotkeySpecW)/sizeof(wchar_t), ofnLoadW.lpstrFile);
-			GetPrivateProfileStringW(L"Mouse", L"MouseHotkeySpecKeyValue", L"0", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
+			if (GetPrivateProfileStringW(L"Mouse", L"MouseHotkeySpecKeyName", L"", bufLoadMouseHotkeySpecW, sizeof(bufLoadMouseHotkeySpecW)/sizeof(wchar_t), ofnLoadW.lpstrFile) == 0)
+				return; // might be broken or inappropriate .ini file. skip loading process.
+
 			mouseHotkeySpecialTextW = bufLoadMouseHotkeySpecW;
-			mouseSpecialKey = _wtoi(bufLoadW);
+			mouseSpecialKey = GetPrivateProfileIntW(L"Mouse", L"MouseHotkeySpecKeyValue", 0, ofnLoadW.lpstrFile);
 			
 			GetPrivateProfileStringW(L"Mouse", L"MouseHotkeyKeyName", L"F5", bufLoadMouseHotkeyW, sizeof(bufLoadMouseHotkeyW)/sizeof(wchar_t), ofnLoadW.lpstrFile);
-			GetPrivateProfileStringW(L"Mouse", L"MouseHotkeyKeyValue", L"116", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
 			mouseHotkeyTextW = bufLoadMouseHotkeyW;
-			mouseHotkey = _wtoi(bufLoadW);
+			mouseHotkey = GetPrivateProfileIntW(L"Mouse", L"MouseHotkeyKeyValue", 116, ofnLoadW.lpstrFile);
 
-			LoadHotkeyW(hWnd, mouseHotkeySpecialTextW, &mouseSpecialKey, mouseHotkeyTextW, &mouseHotkey, HOTKEYAUTOCLICKER);
+			LoadHotkeyW(hWnd, mouseHotkeySpecialTextW, &mouseSpecialKey, mouseHotkeyTextW, HOTKEYAUTOCLICKER);
 
 
 			GetPrivateProfileStringW(L"Mouse", L"MouseIntervalHour", L"0", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
@@ -57,16 +76,13 @@ void LoadInit(HWND hWnd)
 			GetPrivateProfileStringW(L"Mouse", L"MouseIntervalMilliSec", L"0", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
 			SetWindowTextW(mouseEnterMilliSecond, bufLoadW);
 
-			GetPrivateProfileStringW(L"Mouse", L"MouseLMB", L"0", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
-			SendMessage(mouseLmB, CB_SETCURSEL, _wtoi(bufLoadW), 0);
+			SendMessage(mouseLmB, CB_SETCURSEL, GetPrivateProfileIntW(L"Mouse", L"MouseLMB", 0, ofnLoadW.lpstrFile), 0);
 			mouseButton = GetMouseButton(mouseLmB);
 
-			GetPrivateProfileStringW(L"Mouse", L"MouseClickType", L"0", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
-			SendMessage(mouseClickType, CB_SETCURSEL, _wtoi(bufLoadW), 0);
+			SendMessage(mouseClickType, CB_SETCURSEL, GetPrivateProfileIntW(L"Mouse", L"MouseClickType", 0, ofnLoadW.lpstrFile), 0);
 			clickType = GetMouseClickType(mouseClickType);
 
-			GetPrivateProfileStringW(L"Mouse", L"MouseClickRepeatChecked", L"911", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
-			CheckRadioButton(hWnd, MOUSEREPEATINFINITY, MOUSEREPEATCOUNTDOWN, _wtoi(bufLoadW));
+			CheckRadioButton(hWnd, MOUSEREPEATINFINITY, MOUSEREPEATCOUNTDOWN, GetPrivateProfileIntW(L"Mouse", L"MouseClickRepeatChecked", 911, ofnLoadW.lpstrFile));
 
 			GetPrivateProfileStringW(L"Mouse", L"MouseClickTimes", L"5", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
 			SetWindowTextW(mouseRepeatTimesEntry, bufLoadW);
@@ -83,16 +99,14 @@ void LoadInit(HWND hWnd)
 
 
 			GetPrivateProfileStringW(L"Keyboard", L"KeyboardHotkeySpecKeyName", L"", bufLoadKeyboardHotkeySpecW, sizeof(bufLoadKeyboardHotkeySpecW)/sizeof(wchar_t), ofnLoadW.lpstrFile);
-			GetPrivateProfileStringW(L"Keyboard", L"KeyboardHotkeySpecKeyValue", L"1", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
 			keyboardHotkeySpecialTextW = bufLoadKeyboardHotkeySpecW;
-			keyboardSpecialKey = _wtoi(bufLoadW);
+			keyboardSpecialKey = GetPrivateProfileIntW(L"Keyboard", L"KeyboardHotkeySpecKeyValue", 1, ofnLoadW.lpstrFile);
 
 			GetPrivateProfileStringW(L"Keyboard", L"KeyboardHotkeyKeyName", L"F6", bufLoadKeyboardHotkeyW, sizeof(bufLoadKeyboardHotkeyW)/sizeof(wchar_t), ofnLoadW.lpstrFile);
-			GetPrivateProfileStringW(L"Keyboard", L"KeyboardHotkeyKeyValue", L"117", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
 			keyboardHotkeyTextW = bufLoadKeyboardHotkeyW;
-			keyboardHotkey = _wtoi(bufLoadW);
+			keyboardHotkey = GetPrivateProfileIntW(L"Keyboard", L"KeyboardHotkeyKeyValue", 117, ofnLoadW.lpstrFile);
 
-			LoadHotkeyW(hWnd, keyboardHotkeySpecialTextW, &keyboardSpecialKey, keyboardHotkeyTextW, &keyboardHotkey, HOTKEYAUTOPRESSER);
+			LoadHotkeyW(hWnd, keyboardHotkeySpecialTextW, &keyboardSpecialKey, keyboardHotkeyTextW, HOTKEYAUTOPRESSER);
 
 
 			GetPrivateProfileStringW(L"Keyboard", L"KeyboardIntervalHour", L"0", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
@@ -107,16 +121,29 @@ void LoadInit(HWND hWnd)
 			GetPrivateProfileStringW(L"Keyboard", L"KeyboardIntervalMilliSec", L"0", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
 			SetWindowTextW(keyboardEnterMilliSecond, bufLoadW);
 
-			GetPrivateProfileStringW(L"Keyboard", L"KeyboardSelectedKey", L"13", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
-			SendMessage(keyboardSelectedKey, CB_SETCURSEL, (WPARAM)_wtoi(bufLoadW), 0);
-			keyboardKey = GetKeyboardKey(keyboardSelectedKey);
+			keyboardKey = GetPrivateProfileIntW(L"Keyboard", L"KeyboardSelectedKey", (int)'0', ofnLoadW.lpstrFile);
+			int totalEntryCount = (int)SendMessage(keyboardSelectedKey, CB_GETCOUNT, 0, 0);
+			LRESULT myData = 0;
+			for (int index = 0; index < totalEntryCount; ++index)
+			{
+				myData = SendMessage(keyboardSelectedKey, CB_GETITEMDATA, (WPARAM)index, 0);
+				if (keyboardKey == myData)
+				{
+					SendMessage(keyboardSelectedKey, CB_SETCURSEL, index, 0);
+					break;
+				}
+			}
+			if (keyboardKey != myData)
+			{
+				SendMessage(keyboardSelectedKey, CB_SETCURSEL, 0, 0);
+				keyboardKey = '0';
+			}
+			UpdateHotkeysAfterLangChange();
 
-			GetPrivateProfileStringW(L"Keyboard", L"KeyboardHoldModeActive", L"0", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
-			isKeyboardHoldMode = _wtoi(bufLoadW);
+			isKeyboardHoldMode = GetPrivateProfileIntW(L"Keyboard", L"KeyboardHoldModeActive", 0, ofnLoadW.lpstrFile);
 			SendMessage(keyboardHoldCheckBox, BM_SETCHECK, isKeyboardHoldMode, 0);
 
-			GetPrivateProfileStringW(L"Keyboard", L"KeyboardPressRepeatChecked", L"934", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
-			CheckRadioButton(hWnd, KEYBOARDREPEATINFINITY, KEYBOARDREPEATCOUNTDOWN, _wtoi(bufLoadW));
+			CheckRadioButton(hWnd, KEYBOARDREPEATINFINITY, KEYBOARDREPEATCOUNTDOWN, GetPrivateProfileIntW(L"Keyboard", L"KeyboardPressRepeatChecked", 934, ofnLoadW.lpstrFile));
 
 			GetPrivateProfileStringW(L"Keyboard", L"KeyboardPressTimes", L"5", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
 			SetWindowTextW(keyboardRepeatTimesEntry, bufLoadW);
@@ -130,21 +157,18 @@ void LoadInit(HWND hWnd)
 			GetPrivateProfileStringW(L"Keyboard", L"KeyboardCountdownSec", L"05", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
 			SetWindowTextW(keyboardCountdownSecond, bufLoadW);
 
-			GetPrivateProfileStringW(L"Mouse", L"MouseActivated", L"0", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
-			mouseActive = !_wtoi(bufLoadW);
+			mouseActive = !GetPrivateProfileIntW(L"Mouse", L"MouseActivated", 0 ,ofnLoadW.lpstrFile);
 			SendMessageW(hWnd, WM_COMMAND, ACTIVATEMOUSE, 0);
 
-			GetPrivateProfileStringW(L"Keyboard", L"KeyboardActivated", L"0", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
-			keyboardActive = !_wtoi(bufLoadW);
+			keyboardActive = !GetPrivateProfileIntW(L"Keyboard", L"KeyboardActivated", 0, ofnLoadW.lpstrFile);
 			SendMessageW(hWnd, WM_COMMAND, ACTIVATEKEYBOARD, 0);
 
 
 
-			GetPrivateProfileStringW(L"Settings", L"Theme", L"0", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
-			themeOption = _wtoi(bufLoadW);
+			themeOption = GetPrivateProfileIntW(L"Settings", L"Theme", 0, ofnLoadW.lpstrFile);
 			SendMessage(themesList, CB_SETCURSEL, themeOption, 0);
-			SelectTheme();
-			InvalidateRect(hWnd, NULL, TRUE);
+			SelectTheme(hWnd);
+			InvalidateRect(hWnd, NULL, true);
 
 			GetPrivateProfileStringW(L"Settings", L"RandomInterval", L"0", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
 			SetWindowTextW(randomIntervalEnter, bufLoadW);
@@ -152,17 +176,14 @@ void LoadInit(HWND hWnd)
 			GetPrivateProfileStringW(L"Settings", L"HoldTime", L"0", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
 			SetWindowTextW(holdTimeEnter, bufLoadW);
 
-			GetPrivateProfileStringW(L"Settings", L"MinimizeOnSystemTray", L"1", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
-			isTrayChecked = _wtoi(bufLoadW);
+			isTrayChecked = GetPrivateProfileIntW(L"Settings", L"MinimizeOnSystemTray", 1, ofnLoadW.lpstrFile);
 			SendMessage(minimizeOnTray, BM_SETCHECK, isTrayChecked, 0);
 
-			GetPrivateProfileStringW(L"Settings", L"AlwaysOnTop", L"0", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
-			isAlwaysOnTopChecked = _wtoi(bufLoadW);
+			isAlwaysOnTopChecked = GetPrivateProfileIntW(L"Settings", L"AlwaysOnTop", 0, ofnLoadW.lpstrFile);
 			SendMessage(alwaysOnTop, BM_SETCHECK, isAlwaysOnTopChecked, 0);
 			SetWindowPos(hWnd, (isAlwaysOnTopChecked == BST_CHECKED) ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 
-			GetPrivateProfileStringW(L"Settings", L"DisabledTooltips", L"0", bufLoadW, sizeof(bufLoadW)/sizeof(bufLoadW[0]), ofnLoadW.lpstrFile);
-			isDisableTooltipsChecked = _wtoi(bufLoadW);
+			isDisableTooltipsChecked = GetPrivateProfileIntW(L"Settings", L"DisabledTooltips", 0, ofnLoadW.lpstrFile);
 			if (isDisableTooltipsChecked != SendMessage(disableTooltips, BM_GETCHECK, 0, 0))
 				Tooltips(hWnd, !isDisableTooltipsChecked);
 			SendMessage(disableTooltips, BM_SETCHECK, isDisableTooltipsChecked, 0);
@@ -171,13 +192,27 @@ void LoadInit(HWND hWnd)
 
 	else
 	{
-		OPENFILENAMEA ofnLoadA = {0};
-		ZeroMemory(&ofnLoadA, sizeof(ofnLoadA));
 		char szFile[MAX_PATH] = "";
+		OPENFILENAMEA ofnLoadA = {0};
+
+		if (mod == FROM_DROPFILES)
+		{
+			if (DragQueryFileA(hDropFiles, 0, szFile, MAX_PATH))
+			{
+				const char* extensionA = PathFindExtensionA(szFile);
+				if (_stricmp(extensionA, ".ini") == 0)
+				{
+					ofnLoadA.lpstrFile = szFile;
+					goto skip_gofn_func_for_dropfilesA;
+				}
+				else return;
+			}
+			else return;
+		}
+
 		ofnLoadA.lStructSize = 76;
 		ofnLoadA.hwndOwner = hWnd;
 		ofnLoadA.lpstrFile = szFile;
-		ofnLoadA.lpstrFile[0] = '\0';
 		ofnLoadA.nMaxFile = sizeof(szFile);
 		ofnLoadA.lpstrFilter = "INI (*.ini)\0*.ini\0All Files\0*.*\0";
 		ofnLoadA.nFilterIndex = 1;
@@ -185,6 +220,7 @@ void LoadInit(HWND hWnd)
 
 		if (GetOpenFileNameA(&ofnLoadA))
 		{
+skip_gofn_func_for_dropfilesA:
 			char bufLoadA[30];
 
 			static char
@@ -194,17 +230,16 @@ void LoadInit(HWND hWnd)
 			bufLoadKeyboardHotkeyA[20];
 
 
-			GetPrivateProfileStringA("Mouse", "MouseHotkeySpecKeyName", "", bufLoadMouseHotkeySpecA, sizeof(bufLoadMouseHotkeySpecA)/sizeof(char), ofnLoadA.lpstrFile);
-			GetPrivateProfileStringA("Mouse", "MouseHotkeySpecKeyValue", "0", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
+			if (GetPrivateProfileStringA("Mouse", "MouseHotkeySpecKeyName", "", bufLoadMouseHotkeySpecA, sizeof(bufLoadMouseHotkeySpecA)/sizeof(char), ofnLoadA.lpstrFile) == 0)
+				return; // might be broken or inappropriate .ini file. skip loading process.
 			mouseHotkeySpecialTextA = bufLoadMouseHotkeySpecA;
-			mouseSpecialKey = atoi(bufLoadA);
+			mouseSpecialKey = GetPrivateProfileIntA("Mouse", "MouseHotkeySpecKeyValue", 0, ofnLoadA.lpstrFile);
 			
 			GetPrivateProfileStringA("Mouse", "MouseHotkeyKeyName", "F5", bufLoadMouseHotkeyA, sizeof(bufLoadMouseHotkeyA)/sizeof(char), ofnLoadA.lpstrFile);
-			GetPrivateProfileStringA("Mouse", "MouseHotkeyKeyValue", "116", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
 			mouseHotkeyTextA = bufLoadMouseHotkeyA;
-			mouseHotkey = atoi(bufLoadA);
+			mouseHotkey = GetPrivateProfileIntA("Mouse", "MouseHotkeyKeyValue", 116, ofnLoadA.lpstrFile);
 
-			LoadHotkeyA(hWnd, mouseHotkeySpecialTextA, &mouseSpecialKey, mouseHotkeyTextA, &mouseHotkey, HOTKEYAUTOCLICKER);
+			LoadHotkeyA(hWnd, mouseHotkeySpecialTextA, &mouseSpecialKey, mouseHotkeyTextA, HOTKEYAUTOCLICKER);
 
 
 			GetPrivateProfileStringA("Mouse", "MouseIntervalHour", "0", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
@@ -219,16 +254,13 @@ void LoadInit(HWND hWnd)
 			GetPrivateProfileStringA("Mouse", "MouseIntervalMilliSec", "0", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
 			SetWindowTextA(mouseEnterMilliSecond, bufLoadA);
 
-			GetPrivateProfileStringA("Mouse", "MouseLMB", "0", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
-			SendMessageA(mouseLmB, CB_SETCURSEL, atoi(bufLoadA), 0);
+			SendMessageA(mouseLmB, CB_SETCURSEL, GetPrivateProfileIntA("Mouse", "MouseLMB", 0, ofnLoadA.lpstrFile), 0);
 			mouseButton = GetMouseButton(mouseLmB);
 
-			GetPrivateProfileStringA("Mouse", "MouseClickType", "0", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
-			SendMessageA(mouseClickType, CB_SETCURSEL, atoi(bufLoadA), 0);
+			SendMessageA(mouseClickType, CB_SETCURSEL, GetPrivateProfileIntA("Mouse", "MouseClickType", 0, ofnLoadA.lpstrFile), 0);
 			clickType = GetMouseClickType(mouseClickType);
 
-			GetPrivateProfileStringA("Mouse", "MouseClickRepeatChecked", "911", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
-			CheckRadioButton(hWnd, MOUSEREPEATINFINITY, MOUSEREPEATCOUNTDOWN, atoi(bufLoadA));
+			CheckRadioButton(hWnd, MOUSEREPEATINFINITY, MOUSEREPEATCOUNTDOWN, GetPrivateProfileIntA("Mouse", "MouseClickRepeatChecked", 911, ofnLoadA.lpstrFile));
 
 			GetPrivateProfileStringA("Mouse", "MouseClickTimes", "5", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
 			SetWindowTextA(mouseRepeatTimesEntry, bufLoadA);
@@ -245,16 +277,14 @@ void LoadInit(HWND hWnd)
 
 
 			GetPrivateProfileStringA("Keyboard", "KeyboardHotkeySpecKeyName", "", bufLoadKeyboardHotkeySpecA, sizeof(bufLoadKeyboardHotkeySpecA)/sizeof(char), ofnLoadA.lpstrFile);
-			GetPrivateProfileStringA("Keyboard", "KeyboardHotkeySpecKeyValue", "1", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
 			keyboardHotkeySpecialTextA = bufLoadKeyboardHotkeySpecA;
-			keyboardSpecialKey = atoi(bufLoadA);
+			keyboardSpecialKey = GetPrivateProfileIntA("Keyboard", "KeyboardHotkeySpecKeyValue", 1, ofnLoadA.lpstrFile);
 
 			GetPrivateProfileStringA("Keyboard", "KeyboardHotkeyKeyName", "F6", bufLoadKeyboardHotkeyA, sizeof(bufLoadKeyboardHotkeyA)/sizeof(char), ofnLoadA.lpstrFile);
-			GetPrivateProfileStringA("Keyboard", "KeyboardHotkeyKeyValue", "117", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
 			keyboardHotkeyTextA = bufLoadKeyboardHotkeyA;
-			keyboardHotkey = atoi(bufLoadA);
+			keyboardHotkey = GetPrivateProfileIntA("Keyboard", "KeyboardHotkeyKeyValue", 117, ofnLoadA.lpstrFile);
 
-			LoadHotkeyA(hWnd, keyboardHotkeySpecialTextA, &keyboardSpecialKey, keyboardHotkeyTextA, &keyboardHotkey, HOTKEYAUTOPRESSER);
+			LoadHotkeyA(hWnd, keyboardHotkeySpecialTextA, &keyboardSpecialKey, keyboardHotkeyTextA, HOTKEYAUTOPRESSER);
 
 
 			GetPrivateProfileStringA("Keyboard", "KeyboardIntervalHour", "0", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
@@ -269,16 +299,29 @@ void LoadInit(HWND hWnd)
 			GetPrivateProfileStringA("Keyboard", "KeyboardIntervalMilliSec", "0", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
 			SetWindowTextA(keyboardEnterMilliSecond, bufLoadA);
 
-			GetPrivateProfileStringA("Keyboard", "KeyboardSelectedKey", "13", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
-			SendMessageA(keyboardSelectedKey, CB_SETCURSEL, (WPARAM)atoi(bufLoadA), 0);
-			keyboardKey = GetKeyboardKey(keyboardSelectedKey);
+			keyboardKey = GetPrivateProfileIntA("Keyboard", "KeyboardSelectedKey", (int)'0', ofnLoadA.lpstrFile);
+			int totalEntryCount = (int)SendMessage(keyboardSelectedKey, CB_GETCOUNT, 0, 0);
+			LRESULT myData = 0;
+			for (int index = 0; index < totalEntryCount; ++index)
+			{
+				myData = SendMessage(keyboardSelectedKey, CB_GETITEMDATA, (WPARAM)index, 0);
+				if (keyboardKey == myData)
+				{
+					SendMessage(keyboardSelectedKey, CB_SETCURSEL, index, 0);
+					break;
+				}
+			}
+			if (keyboardKey != myData)
+			{
+				SendMessage(keyboardSelectedKey, CB_SETCURSEL, 0, 0);
+				keyboardKey = '0';
+			}
+			UpdateHotkeysAfterLangChange();
 
-			GetPrivateProfileStringA("Keyboard", "KeyboardSelectedKey", "0", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
-			isKeyboardHoldMode = atoi(bufLoadA);
+			isKeyboardHoldMode = GetPrivateProfileIntA("Keyboard", "KeyboardHoldModeActive", 0, ofnLoadA.lpstrFile);
 			SendMessageA(keyboardHoldCheckBox, BM_SETCHECK, isKeyboardHoldMode, 0);
 
-			GetPrivateProfileStringA("Keyboard", "KeyboardPressRepeatChecked", "934", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
-			CheckRadioButton(hWnd, KEYBOARDREPEATINFINITY, KEYBOARDREPEATCOUNTDOWN, atoi(bufLoadA));
+			CheckRadioButton(hWnd, KEYBOARDREPEATINFINITY, KEYBOARDREPEATCOUNTDOWN, GetPrivateProfileIntA("Keyboard", "KeyboardPressRepeatChecked", 934, ofnLoadA.lpstrFile));
 
 			GetPrivateProfileStringA("Keyboard", "KeyboardPressTimes", "5", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
 			SetWindowTextA(keyboardRepeatTimesEntry, bufLoadA);
@@ -292,20 +335,17 @@ void LoadInit(HWND hWnd)
 			GetPrivateProfileStringA("Keyboard", "KeyboardCountdownSec", "05", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
 			SetWindowTextA(keyboardCountdownSecond, bufLoadA);
 
-			GetPrivateProfileStringA("Mouse", "MouseActivated", "0", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
-			mouseActive = !atoi(bufLoadA);
+			mouseActive = !GetPrivateProfileIntA("Mouse", "MouseActivated", 0, ofnLoadA.lpstrFile);
 			SendMessageA(hWnd, WM_COMMAND, ACTIVATEMOUSE, 0);
 
-			GetPrivateProfileStringA("Keyboard", "KeyboardActivated", "0", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
-			keyboardActive = !atoi(bufLoadA);
+			keyboardActive = !GetPrivateProfileIntA("Keyboard", "KeyboardActivated", 0, ofnLoadA.lpstrFile);
 			SendMessageA(hWnd, WM_COMMAND, ACTIVATEKEYBOARD, 0); 
 
 
 
-			GetPrivateProfileStringA("Settings", "Theme", "0", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
-			themeOption = atoi(bufLoadA);
+			themeOption = GetPrivateProfileIntA("Settings", "Theme", 0, ofnLoadA.lpstrFile);
 			SendMessageA(themesList, CB_SETCURSEL, themeOption, 0);
-			SelectTheme();
+			SelectTheme(hWnd);
 			InvalidateRect(hWnd, NULL, TRUE);
 
 			GetPrivateProfileStringA("Settings", "RandomInterval", "0", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
@@ -314,17 +354,14 @@ void LoadInit(HWND hWnd)
 			GetPrivateProfileStringA("Settings", "HoldTime", "0", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
 			SetWindowTextA(holdTimeEnter, bufLoadA);
 
-			GetPrivateProfileStringA("Settings", "MinimizeOnSystemTray", "1", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
-			isTrayChecked = atoi(bufLoadA);
+			isTrayChecked = GetPrivateProfileIntA("Settings", "MinimizeOnSystemTray", 1, ofnLoadA.lpstrFile);
 			SendMessageA(minimizeOnTray, BM_SETCHECK, isTrayChecked, 0);
 
-			GetPrivateProfileStringA("Settings", "AlwaysOnTop", "0", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
-			isAlwaysOnTopChecked = atoi(bufLoadA);
+			isAlwaysOnTopChecked = GetPrivateProfileIntA("Settings", "AlwaysOnTop", 0, ofnLoadA.lpstrFile);
 			SendMessageA(alwaysOnTop, BM_SETCHECK, isAlwaysOnTopChecked, 0);
 			SetWindowPos(hWnd, (isAlwaysOnTopChecked == BST_CHECKED) ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 
-			GetPrivateProfileStringA("Settings", "DisabledTooltips", "0", bufLoadA, sizeof(bufLoadA)/sizeof(bufLoadA[0]), ofnLoadA.lpstrFile);
-			isDisableTooltipsChecked = atoi(bufLoadA);
+			isDisableTooltipsChecked = GetPrivateProfileIntA("Settings", "DisabledTooltips", 0, ofnLoadA.lpstrFile);
 			if (isDisableTooltipsChecked != SendMessage(disableTooltips, BM_GETCHECK, 0, 0))
 				Tooltips(hWnd, !isDisableTooltipsChecked);
 			SendMessage(disableTooltips, BM_SETCHECK, isDisableTooltipsChecked, 0);
@@ -334,14 +371,18 @@ void LoadInit(HWND hWnd)
 
 
 
-void SaveInit(HWND hWnd)
+void SaveIni(HWND hWnd)
 {
 	if (isWindowsNT())
 	{
-		OPENFILENAMEW ofnSaveW = {0};
-		ZeroMemory(&ofnSaveW, sizeof(ofnSaveW));
 		WCHAR szFile[MAX_PATH] = L"KB65 Autoclicker.ini";
-		ofnSaveW.lStructSize = sizeof(ofnSaveW);
+		OPENFILENAMEW ofnSaveW = {0};
+
+		// Windows NT 4.0 only
+		if (winverOld.dwMajorVersion == 4 && winverOld.dwMinorVersion == 0 && winverOld.dwPlatformId == VER_PLATFORM_WIN32_NT)
+			ofnSaveW.lStructSize = OPENFILENAME_SIZE_VERSION_400;
+		else
+			ofnSaveW.lStructSize = sizeof(ofnSaveW);
 		ofnSaveW.hwndOwner = hWnd;
 		ofnSaveW.lpstrFilter = L"INI (*.ini)\0*.ini\0";
 		ofnSaveW.lpstrFile = szFile;
@@ -430,7 +471,7 @@ void SaveInit(HWND hWnd)
 			WritePrivateProfileStringW(L"Keyboard", L"KeyboardHotkeyKeyName", bufSaveKeyboardHotkeyW, ofnSaveW.lpstrFile);
 			WritePrivateProfileStringW(L"Keyboard", L"KeyboardHotkeyKeyValue", bufSaveW, ofnSaveW.lpstrFile);
 
-			swprintf(bufSaveW, L"%d", (int)SendMessage(keyboardSelectedKey, CB_GETCURSEL, 0, 0));
+			swprintf(bufSaveW, L"%d", (int)SendMessage(keyboardSelectedKey, CB_GETITEMDATA, (int)SendMessage(keyboardSelectedKey, CB_GETCURSEL, 0, 0), 0));
 			WritePrivateProfileStringW(L"Keyboard", L"KeyboardSelectedKey", bufSaveW, ofnSaveW.lpstrFile);
 
 			swprintf(bufSaveW, L"%d", (int)isKeyboardHoldMode);
@@ -495,9 +536,8 @@ void SaveInit(HWND hWnd)
 	}
 	else
 	{
-		OPENFILENAMEA ofnSaveA = {0};
-		ZeroMemory(&ofnSaveA, sizeof(ofnSaveA));
 		char szFile[MAX_PATH] = "KB65 Autoclicker.ini";
+		OPENFILENAMEA ofnSaveA = {0};
 		ofnSaveA.lStructSize = 76;
 		ofnSaveA.hwndOwner = hWnd;
 		ofnSaveA.lpstrFilter = "INI (*.ini)\0*.ini\0";
@@ -586,7 +626,7 @@ void SaveInit(HWND hWnd)
 			WritePrivateProfileStringA("Keyboard", "KeyboardHotkeyKeyName", bufSaveKeyboardHotkeyA, ofnSaveA.lpstrFile);
 			WritePrivateProfileStringA("Keyboard", "KeyboardHotkeyKeyValue", bufSaveA, ofnSaveA.lpstrFile);
 
-			sprintf(bufSaveA, "%d", (int)SendMessage(keyboardSelectedKey, CB_GETCURSEL, 0, 0));
+			sprintf(bufSaveA, "%d", (int)SendMessage(keyboardSelectedKey, CB_GETITEMDATA, (int)SendMessage(keyboardSelectedKey, CB_GETCURSEL, 0, 0), 0));
 			WritePrivateProfileStringA("Keyboard", "KeyboardSelectedKey", bufSaveA, ofnSaveA.lpstrFile);
 
 			sprintf(bufSaveA, "%d", (int)isKeyboardHoldMode);

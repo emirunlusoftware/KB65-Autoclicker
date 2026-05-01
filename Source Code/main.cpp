@@ -1,24 +1,42 @@
 #include "KB65 Autoclicker.h"
-#include <shellapi.h>
-#include <time.h>
 
 
 
 
 
 HDC hdc;
+HHOOK inputLangChangeHook = NULL;
 HINSTANCE hInst = GetModuleHandle(NULL);
 HWND hWnd;
 PAINTSTRUCT ps;
 
 
-UINT currentPage = 0;
+UINT currentPage = MAINPAGE;
+int appWidth = 400;
+int appHeight = 364;
 
 static bool
 mouseHotkeySelected = true,
 keyboardHotkeySelected = true,
 mouseRunning = false,
-keyboardRunning = false;
+keyboardRunning = false,
+textScaleChanged = false;
+
+
+
+
+
+LRESULT CALLBACK InputLangProc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+	if (nCode >= 0)
+	{
+		CWPSTRUCT* pMsg = (CWPSTRUCT*)lParam;
+
+		if (pMsg->message == WM_INPUTLANGCHANGE && pMsg->hwnd != hWnd)
+			PostMessage(hWnd, WM_INPUTLANGCHANGE, pMsg->wParam, pMsg->lParam);
+	}
+	return CallNextHookEx(inputLangChangeHook, nCode, wParam, lParam);
+}
 
 
 
@@ -28,17 +46,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		case WM_CREATE:
 		{
-			winver.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-			GetVersionEx(&winver);
+			inputLangChangeHook = SetWindowsHookEx(WH_CALLWNDPROC, InputLangProc, hInst, GetCurrentThreadId());
+			DragAcceptFiles(hWnd, true);
+			if (isWindowsXPLater())
+				ChangeDragDropMsgFilter(hWnd);
 
-			srand(time(NULL));
 			timeBeginPeriod(1);
 
-			LoadingButtons(hWnd, hInst);
-			LoadingEntries(hWnd, hInst);
-			LoadingFonts(hWnd);
-			LoadingTooltips(hWnd);
-			LoadingImages();
+			LoadButtons(hWnd, hInst);
+			LoadEntries(hWnd, hInst);
+			LoadFonts(hWnd);
+			LoadTooltips(hWnd);
+			LoadImages();
 
 			SystemTrayInit(hWnd, hInst);
 
@@ -50,13 +69,38 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 
 
+		case WM_DROPFILES:
+		{
+			HDROP hDrop = (HDROP)wParam;
+			LoadIni(hWnd, FROM_DROPFILES, hDrop);
+			DragFinish(hDrop);
+			return 0;
+		}
+
+
+		case WM_CTLCOLORBTN:
 		case WM_CTLCOLORSTATIC:
 		{
 			if (themeOption != THEMEDEFAULT)
 			{
 				HDC wcexStatic = (HDC)wParam;
 				SetBkMode(wcexStatic, TRANSPARENT);
-				return (INT_PTR)themeColor;
+				switch(message)
+				{
+					case WM_CTLCOLORBTN:
+					{
+						HWND hBtn = (HWND)lParam;
+						if (hBtn == infoButton || hBtn == loadScriptsButton
+							|| hBtn == saveScriptsButton || hBtn == settingsButton)
+						{
+							hColumnColor = CreateSolidBrush(columnColor);
+							return (INT_PTR)hColumnColor;
+						}
+						else return (INT_PTR)themeColor;
+					}
+					case WM_CTLCOLORSTATIC:
+						return (INT_PTR)themeColor;
+				}
 			}
 			return DefWindowProc(hWnd, message, wParam, lParam);
 		}
@@ -76,12 +120,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 			HFONT hSafeFont = (HFONT)SelectObject(hdc, globalFont);
 			SetBkMode(hdc, TRANSPARENT);
+			SetTextColor(hdc, GetSysColor(COLOR_BTNTEXT));
 			PageTexts(hdc, currentPage);
 
 			if (currentPage == MAINPAGE)
-				DrawLine(hdc, 0, 182, (370 + 30), 182, lineColor1, 1);
+				DrawLine(hdc, 0, 182, (370 + 30), 182, lineColor, 1);
 			if (themeOption != THEMEDEFAULT)
-				DrawLine(hdc, 387, 0, 387, 364, lineColor2, 34);
+				DrawLine(hdc, 387, 0, 387, 364, columnColor, 34);
 
 			GetImages(hdc, themeOption);
 
@@ -221,6 +266,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 						}
 						ToggleMenusDuringAutomation(hWnd, AUTOCLICKER, SHOW);
 					}
+
+					if (!mouseRunning && !keyboardRunning)
+						DragAcceptFiles(hWnd, true);
+					else
+						DragAcceptFiles(hWnd, false);
+
 					break;
 				}
 
@@ -232,7 +283,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 						keyboardRunning = true;
 						if (StartAutomation(hWnd, AUTOPRESSER) != SUCCESS)
 							break;
-
 					}
 					else if (LOWORD(wParam) == KEYBOARDPRESSSTOPBUTTON)
 					{
@@ -248,6 +298,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 						}
 						ToggleMenusDuringAutomation(hWnd, AUTOPRESSER, SHOW);
 					}
+
+					if (!mouseRunning && !keyboardRunning)
+						DragAcceptFiles(hWnd, true);
+					else
+						DragAcceptFiles(hWnd, false);
+
 					break;
 				}
 
@@ -255,17 +311,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 				case INFOBUTTON:
 				{
-					ShellExecute(NULL, "open", "https://raw.githubusercontent.com/emirunlusoftware/KB65-Autoclicker/c77c5d059e46337bd6a509e103cde20f558ecfe7/KB65%20Autoclicker%20User%20Guide.pdf", NULL, NULL, SW_SHOWNORMAL);
+					ShellExecute(NULL, "open", "https://github.com/emirunlusoftware/KB65-Autoclicker", NULL, NULL, SW_SHOWNORMAL);
 					break;
 				}
 				case LOADSCRIPTSBUTTON:
 				{
-					LoadInit(hWnd);
+					LoadIni(hWnd, FROM_INI_FILE, NULL);
 					break;
 				}
 				case SAVESCRIPTSBUTTON:
 				{
-					SaveInit(hWnd);
+					SaveIni(hWnd);
 					break;
 				}
 				case SETTINGSBUTTON:
@@ -280,7 +336,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				{
 					if (HIWORD(wParam) == CBN_SELCHANGE)
 					{
-						SelectTheme();
+						SelectTheme(hWnd);
 						InvalidateRect(hWnd, NULL, TRUE);
 					}
 					break;
@@ -345,7 +401,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				}
 
 				// Press ESC to go to previous page, or exit the program.
-				// Doesn't work if ESC is set as hotkey.
+				// If ESC is set as hotkey, pressing ESC won't exit the program.
 				case IDCANCEL:
 				{
 					switch(currentPage)
@@ -424,10 +480,131 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 
 
+		case WM_DPICHANGED:
+		case WM_SETTINGCHANGE:
+		{
+			if (DPI::isWindows10Later)
+			{
+				// Jump to WM_SIZE
+				if (IsIconic(hWnd) && (lParam && strcmp((LPCSTR)lParam, "WindowMetrics") == 0))
+				{
+					textScaleChanged = true;
+					return 0;
+				}
+
+				if (message == WM_DPICHANGED || lParam && strcmp((LPCSTR)lParam, "WindowMetrics") == 0)
+				{
+					if (message == WM_DPICHANGED)
+					{
+						UINT newDpi_X = LOWORD(wParam);
+						DPI::g_dpi = newDpi_X;
+					}
+					else if (message == WM_SETTINGCHANGE)
+					{
+						TextScaling::fRegGetValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Accessibility", L"TextScaleFactor");
+					}
+
+
+					Tooltips(hWnd, HIDE);
+					DestroyImages();
+
+					for (size_t i = 0; i < buttonsInfoSize; ++i)
+					{
+						SetWindowPos(*buttonsInfo[i].hWnd, NULL,
+							DPI::Scale(buttonsInfo[i].x), DPI::Scale(buttonsInfo[i].y),
+							DPI::Scale(buttonsInfo[i].w), DPI::Scale(buttonsInfo[i].h),
+							SWP_NOZORDER);
+					}
+					for (size_t i = 0; i < entriesInfoSize; ++i)
+					{
+						SetWindowPos(*entriesInfo[i].hWnd, NULL,
+							DPI::Scale(entriesInfo[i].x), DPI::Scale(entriesInfo[i].y),
+							DPI::Scale(entriesInfo[i].w), DPI::Scale(entriesInfo[i].h),
+							SWP_NOZORDER);
+					}
+					DestroyFonts();
+
+
+					if (message == WM_SETTINGCHANGE)
+						UpdateMainWindow(hWnd, appWidth, appHeight);
+
+
+					// SendMessage: Re-set the buddy and refresh Spin's layout (otherwise spin gets bigger and covers editbox when DPI/text size is changed).
+					// ShowPage: All buttons on the current page are refreshed just in case.
+					SendMessage(mouseRepeatTimesSpin, UDM_SETBUDDY, (WPARAM)mouseRepeatTimesEntry, 0);
+					SendMessage(keyboardRepeatTimesSpin, UDM_SETBUDDY, (WPARAM)keyboardRepeatTimesEntry, 0);
+					ShowPage(currentPage);
+
+					LoadFonts(hWnd);
+					Tooltips(hWnd, SHOW);
+					LoadImages();
+
+					InvalidateRect(hWnd, NULL, TRUE);
+				}
+			}
+
+			return 0;
+		}
+
+		// Process the window here, after text size is changed and when the application is minimized.
+		// Otherwise size of everything except the main window's size won't set properly.
+		case WM_SIZE:
+		{
+			if (DPI::isWindows10Later)
+			{
+				if (wParam == SIZE_RESTORED && (textScaleChanged))
+				{
+					textScaleChanged = false;
+					TextScaling::fRegGetValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Accessibility", L"TextScaleFactor");
+
+					Tooltips(hWnd, HIDE);
+					DestroyImages();
+
+					for (size_t i = 0; i < buttonsInfoSize; ++i)
+					{
+						SetWindowPos(*buttonsInfo[i].hWnd, NULL,
+							DPI::Scale(buttonsInfo[i].x), DPI::Scale(buttonsInfo[i].y),
+							DPI::Scale(buttonsInfo[i].w), DPI::Scale(buttonsInfo[i].h),
+							SWP_NOZORDER);
+					}
+					for (size_t i = 0; i < entriesInfoSize; ++i)
+					{
+						SetWindowPos(*entriesInfo[i].hWnd, NULL,
+							DPI::Scale(entriesInfo[i].x), DPI::Scale(entriesInfo[i].y),
+							DPI::Scale(entriesInfo[i].w), DPI::Scale(entriesInfo[i].h),
+							SWP_NOZORDER);
+					}
+					DestroyFonts();
+					UpdateMainWindow(hWnd, appWidth, appHeight);
+
+					SendMessage(mouseRepeatTimesSpin, UDM_SETBUDDY, (WPARAM)mouseRepeatTimesEntry, 0);
+					SendMessage(keyboardRepeatTimesSpin, UDM_SETBUDDY, (WPARAM)keyboardRepeatTimesEntry, 0);
+					ShowPage(currentPage);
+					LoadFonts(hWnd);
+					Tooltips(hWnd, SHOW);
+					LoadImages();
+					RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ERASE);
+				}
+			}
+			break;
+		}
+
+
+
 		case WM_INPUTLANGCHANGE:
+		{
 			SendMessage(keyboardSelectedKey, CB_RESETCONTENT, 0, 0);
 			PopulateComboBox(keyboardSelectedKey, (HKL)lParam);
-			break;
+			UpdateHotkeysAfterLangChange();
+
+			char langName[64], infoText[128];
+			LANGID langID = LOWORD((HKL)lParam);
+			LCID lcid = MAKELCID(langID, SORT_DEFAULT);
+			GetLocaleInfo(lcid, LOCALE_SENGLANGUAGE, langName, sizeof(langName));
+			sprintf_s(infoText, 256, "Your keyboard language has been changed to %s.", langName);
+			MessageBox(hWnd, infoText, "KB65 Autoclicker", MB_OK | MB_ICONINFORMATION);
+			return 1;
+		}
 
 
 
@@ -466,12 +643,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				timeKillEvent(timers[tmrIndex]);
 			timeEndPeriod(1);
 
+			if (inputLangChangeHook) {UnhookWindowsHookEx(inputLangChangeHook); inputLangChangeHook = NULL;}
 			UnregisterHotKey(hWnd, MOUSECLICKHOTKEY);
 			UnregisterHotKey(hWnd, KEYBOARDPRESSHOTKEY);
 			DestroyImages();
 			DeleteObject(globalFont);
-			if (themeColor != (HBRUSH)(COLOR_BTNSHADOW))
-				DeleteObject(themeColor);
+			DeleteBrush();
 
 			PostQuitMessage(0);
 			return 0;
@@ -511,15 +688,16 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 
 
 
+RECT WindowDimensions;
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
 	hInst = hInstance;
 
 	// posLeft, posTop, posRight, posBottom
-	RECT WindowDimensions =
-	{
-		0, 0, DPIScale(400), DPIScale(364)
-	};
+	WindowDimensions.left	= 0;
+	WindowDimensions.top	= 0;
+	WindowDimensions.right	= DPI::Scale(appWidth);
+	WindowDimensions.bottom	= DPI::Scale(appHeight);
 
 	AdjustWindowRect(&WindowDimensions, WS_OVERLAPPEDWINDOW &~ (WS_MAXIMIZEBOX | WS_THICKFRAME), FALSE);
 
@@ -528,7 +706,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	int posX = (screenWidth - (WindowDimensions.right - WindowDimensions.left)) / 2;
 	int posY = (screenHeight - (WindowDimensions.bottom - WindowDimensions.top)) / 2;
 
-	hWnd = CreateWindow(
+	hWnd = CreateWindowEx(WS_EX_ACCEPTFILES,
 		szWindowClass,
 		szTitle,
 		WS_OVERLAPPEDWINDOW &~ (WS_MAXIMIZEBOX | WS_THICKFRAME),
@@ -536,8 +714,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 		WindowDimensions.right - WindowDimensions.left,
 		WindowDimensions.bottom - WindowDimensions.top,
 		NULL, NULL, hInst, NULL);
-
-	SetForegroundWindow(hWnd);
 
 	if (!hWnd)
 		return FALSE;
@@ -547,6 +723,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
 	return TRUE;
 }
+
+
 
 
 
@@ -560,11 +738,11 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	if (GetLastError() == ERROR_ALREADY_EXISTS)
 		return FALSE;
 
+	DPI::InitWin32Environment();
 	MyRegisterClass(hInstance);
 
 	if (!InitInstance(hInstance, nCmdShow))
 		return FALSE;
-
 
 	MSG msg;
 	while (GetMessage(&msg, NULL, 0, 0))

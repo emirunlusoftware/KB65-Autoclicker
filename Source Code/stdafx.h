@@ -24,16 +24,22 @@
 
 #define WIN32_LEAN_AND_MEAN		// Exclude rarely-used stuff from Windows headers
 
+#define _CRT_RAND_S // Define this macro to be able to use rand_s() function from stdlib.h
+
+
 // Windows Header Files
 #include <windows.h>
 #include <commctrl.h>
 #include <mmsystem.h>
+#include <shellapi.h>
+#include <shlwapi.h>
+#pragma comment(lib, "shlwapi.lib")
 #pragma comment(lib, "winmm.lib")
 
 // C RunTime Header Files
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 
 // TODO: reference additional headers your program requires here

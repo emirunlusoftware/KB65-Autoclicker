@@ -10,33 +10,35 @@ bool
 mouseActive = true,
 keyboardActive = false;
 
+// Minimum OS version: 4.0 (Windows NT 4.0)
+// Maximum OS version: 6.2 (Windows 8)
+// use with GetVersionEx(&winverOld)
+OSVERSIONINFO winverOld = {0};
 
-
-int DPIScale(int value)
-{
-	HDC hdc = GetDC(NULL);
-	int dpi = GetDeviceCaps(hdc, LOGPIXELSX);
-	ReleaseDC(NULL, hdc);
-
-	return (int)(value * (dpi / 96.0f));
-}
+// Minimum OS version: 5.0 (Windows 2000)
+// Maximum OS version: 10.0 (Windows 10/11)
+RTL_OSVERSIONINFOW winver = {0};
 
 
 
-OSVERSIONINFO winver;
 bool isWindowsNT()
 {
-	// • true [Windows NT (2000/XP/Vista etc.)]
+	// • true [Windows NT (NT 4.0/2000/XP/Vista etc.)]
 	// • false [Windows 98/ME]
-	return !(winver.dwMajorVersion == 4 && winver.dwMinorVersion >= 10);
+	return (winverOld.dwPlatformId == VER_PLATFORM_WIN32_NT);
 }
-
 
 
 bool isWindowsXPLater()
 {
 	// Settings like EM_SETCUEBANNER aren't supported on Windows 2000
-	return (winver.dwMajorVersion >= 5 && winver.dwMinorVersion >= 1);
+	return (winver.dwMajorVersion == 5 && winver.dwMinorVersion >= 1) || (winver.dwMajorVersion > 5);
+}
+
+
+bool isWindowsVistaLater()
+{
+	return (winver.dwMajorVersion >= 6 && winver.dwMinorVersion >= 0);
 }
 
 
@@ -45,7 +47,7 @@ void RealignZOrderChain(HWND hWnd)
 {
 	HWND hWndGetPrev = HWND_BOTTOM;
 
-	for (int id = ACTIVATEMOUSE_VIA_TRAY; id <= BACKTOMAINBUTTON; id++)
+	for (int id = ACTIVATEMOUSE_VIA_TRAY; id <= BACKTOMAINBUTTON; ++id)
 	{
 		HWND hWndGet = GetDlgItem(hWnd, id);
 		if (hWndGet != NULL)
@@ -59,11 +61,34 @@ void RealignZOrderChain(HWND hWnd)
 
 
 
+// Windows Vista and later.
+// Changes the message filter for 3 messages below to handle WM_DROPFILES messages (a.k.a Drag & Drop)
+// Otherwise you won't be able to catch WM_DROPFILES messages (a.k.a no Drag & Drop).
+void ChangeDragDropMsgFilter(HWND hWnd)
+{
+	HMODULE hUser32 = LoadLibraryW(L"user32.dll");
+	if (hUser32)
+	{
+		CHANGEWINDOWMESSAGEFILTEREX pfnChangeWindowMessageFilterEx =
+			(CHANGEWINDOWMESSAGEFILTEREX)GetProcAddress(hUser32, "ChangeWindowMessageFilterEx");
+
+		if (pfnChangeWindowMessageFilterEx)
+		{
+			pfnChangeWindowMessageFilterEx(hWnd, WM_DROPFILES, MSGFLT_ALLOW, NULL);
+			pfnChangeWindowMessageFilterEx(hWnd, WM_COPYDATA, MSGFLT_ALLOW, NULL);
+			pfnChangeWindowMessageFilterEx(hWnd, WM_COPYGLOBALDATA, MSGFLT_ALLOW, NULL);
+		}
+		FreeLibrary(hUser32);
+	}
+}
+
+
+
 void ActiveAppearance(HWND hWnd, int mod, bool isEnabled)
 {
 	for (int idNumber = (mod == AUTOCLICKER ? MOUSETIMERFRAME : KEYBOARDTIMERFRAME);
 		idNumber < (mod == AUTOCLICKER ? MOUSECLICKHOTKEYBUTTON: KEYBOARDPRESSHOTKEYBUTTON);
-		idNumber++)
+		++idNumber)
 	{
 		HWND hWndGet = GetDlgItem(hWnd, idNumber);
 
@@ -93,19 +118,20 @@ void HotkeyButtonAppearance(HWND hotkeyButton, bool isEnabled)
 
 void HotkeySelectionAppearance(HWND hWnd, WORD hotkeyButtonId, bool isEnabled)
 {
+	DragAcceptFiles(hWnd, isEnabled);
 	EnableWindow(activateMouseCheckBox, isEnabled);
 	EnableWindow(activateKeyboardCheckBox, isEnabled);
 	EnableWindow(loadScriptsButton, isEnabled);
 	EnableWindow(saveScriptsButton, isEnabled);
 
-	for (int idNumber = MOUSETIMERFRAME; idNumber <= MOUSECLICKSTARTBUTTON; idNumber++)
+	for (int idNumber = MOUSETIMERFRAME; idNumber <= MOUSECLICKSTARTBUTTON; ++idNumber)
 	{
 		HWND hWndGet = GetDlgItem(hWnd, idNumber);
 
 		if (hWndGet != NULL)
 			EnableWindow(hWndGet, !isEnabled ? HIDE : mouseActive);
 	}
-	for (int idNumber = KEYBOARDTIMERFRAME; idNumber <= KEYBOARDPRESSSTARTBUTTON; idNumber++)
+	for (int idNumber = KEYBOARDTIMERFRAME; idNumber <= KEYBOARDPRESSSTARTBUTTON; ++idNumber)
 	{
 		HWND hWndGet = GetDlgItem(hWnd, idNumber);
 
@@ -126,7 +152,7 @@ void HotkeySelectionAppearance(HWND hWnd, WORD hotkeyButtonId, bool isEnabled)
 
 void DebugAppearance(HWND hWnd, bool isEnabled)
 {
-	for (int idNumber = SETTINGSFRAME; idNumber <= BACKTOMAINBUTTON; idNumber++)
+	for (int idNumber = SETTINGSFRAME; idNumber <= BACKTOMAINBUTTON; ++idNumber)
 	{
 		HWND hWndGet = GetDlgItem(hWnd, idNumber);
 
@@ -183,10 +209,10 @@ void PopulateComboBox(HWND keyboardSelectedKey, HKL hkl)
 	if (isWindowsNT())
 	{
 		// 1) Populate with digits and letters
-		for (UINT vk = '0'; vk <= 'Z'; vk++)
+		for (UINT vk = '0'; vk <= 'Z'; ++vk)
 		{
-			WCHAR buffer[2] = { 0 };
-			int result = ToUnicodeEx(vk, MapVirtualKey(vk, 0), keyState, buffer, 2, 0, hkl);
+			WCHAR buffer[3] = { 0 };
+			int result = ToUnicodeEx(vk, MapVirtualKey(vk, 0), keyState, buffer, 3, 0, hkl);
 			if (result > 0)
 			{
 				WCHAR keyAlnumStr[2] = { buffer[0], '\0' };
@@ -196,10 +222,24 @@ void PopulateComboBox(HWND keyboardSelectedKey, HKL hkl)
 		}
 
 		// 2) Populate with special OEM letters (Þ, Ç, Ð etc.)
-		for (UINT vk = 0xBA; vk <= 0xE2; vk++)
+		for (UINT vk = 0xBA; vk <= 0xE2; ++vk)
 		{
-			WCHAR buffer[2] = { 0 };
-			int result = ToUnicodeEx(vk, MapVirtualKey(vk, 0), keyState, buffer, 2, 0, hkl);
+			WCHAR buffer[3] = { 0 };
+			int result = ToUnicodeEx(vk, MapVirtualKey(vk, 0), keyState, buffer, 3, 0, hkl);
+
+
+			// Dead keys are the keys which appear on the screen
+			// after you pressed the same key at second time
+			// (e.g. ^ (circumflex) ` (backtick) ~ (tilde))
+			// ---Problem---
+			// Dead keys* aren't being added to keyboardSelectedKey combobox,
+			// also ToUnicodeEx are returning -1 due to this keys.
+			// Thus, the keys aren't being seen in the combobox.
+			// ---Solution---
+			// Handle -1 value and call ToUnicodeEx function again.
+			if (result == -1)
+				result = ToUnicodeEx(vk, MapVirtualKey(vk, 0), keyState, buffer, 3, 0, hkl);
+
 			if (result > 0)
 			{
 				WCHAR keyOEMCharStr[2] = { buffer[0], '\0' };
@@ -208,7 +248,7 @@ void PopulateComboBox(HWND keyboardSelectedKey, HKL hkl)
 			}
 		}
 
-		for (int arrIndex = 0; arrIndex < (sizeof(otherKeys)/sizeof(otherKeys[0])); arrIndex++)
+		for (UINT arrIndex = 0; arrIndex < (sizeof(otherKeys)/sizeof(otherKeys[0])); ++arrIndex)
 		{
 			LRESULT index = SendMessageW(keyboardSelectedKey, CB_ADDSTRING, 0, (LPARAM)otherKeys[arrIndex]);
 			SendMessageW(keyboardSelectedKey, CB_SETITEMDATA, (WPARAM)index, (LPARAM)otherKeysVkCodes[arrIndex]); // Embed vkCode data to current index.
@@ -218,9 +258,9 @@ void PopulateComboBox(HWND keyboardSelectedKey, HKL hkl)
 	else // Windows 98/ME
 	{
 		// 1) Populate with digits and letters
-		for (UINT vk = '0'; vk <= 'Z'; vk++)
+		for (UINT vk = '0'; vk <= 'Z'; ++vk)
 		{
-			WORD buffer[2] = { 0 };
+			WORD buffer[3] = { 0 };
 			int result = ToAsciiEx(vk, MapVirtualKey(vk, 0), keyState, buffer, 0, hkl);
 			if (result > 0)
 			{
@@ -231,10 +271,14 @@ void PopulateComboBox(HWND keyboardSelectedKey, HKL hkl)
 		}
 
 		// 2) Populate with special OEM letters (Þ, Ç, Ð etc.)
-		for (UINT vk = 0xBA; vk <= 0xE2; vk++)
+		for (UINT vk = 0xBA; vk <= 0xE2; ++vk)
 		{
-			WORD buffer[2] = { 0 };
+			WORD buffer[3] = { 0 };
 			int result = ToAsciiEx(vk, MapVirtualKey(vk, 0), keyState, buffer, 0, hkl);
+
+			if (result == -1)
+				result = ToAsciiEx(vk, MapVirtualKey(vk, 0), keyState, buffer, 0, hkl);
+
 			if (result > 0)
 			{
 				char keyOEMCharStr[2] = { buffer[0], '\0' };
@@ -244,14 +288,34 @@ void PopulateComboBox(HWND keyboardSelectedKey, HKL hkl)
 		}
 
 		char otherAsciiKeysArray[20];
-		for (int arrIndex = 0; arrIndex < (sizeof(otherKeys)/sizeof(otherKeys[0])); arrIndex++)
+		for (UINT arrIndex = 0; arrIndex < (sizeof(otherKeys)/sizeof(otherKeys[0])); ++arrIndex)
 		{
-			wcstombs(otherAsciiKeysArray, otherKeys[arrIndex], sizeof(otherAsciiKeysArray));
 			wcstombs(otherAsciiKeysArray, otherKeys[arrIndex], sizeof(otherAsciiKeysArray));
 			LRESULT index = SendMessageA(keyboardSelectedKey, CB_ADDSTRING, 0, (LPARAM)otherAsciiKeysArray);
 			SendMessageA(keyboardSelectedKey, CB_SETITEMDATA, (WPARAM)index, (LPARAM)otherKeysVkCodes[arrIndex]); // Embed vkCode data to current index.
 		}
 	}
 
-	SendMessage(keyboardSelectedKey, CB_SETCURSEL, 0, 0);
+
+	// SendMessage is required for initialization process of the program.
+	if (keyboardKey == '0')
+		SendMessage(keyboardSelectedKey, CB_SETCURSEL, 0, 0);
+	else
+	{
+		int totalEntryCount = (int)SendMessage(keyboardSelectedKey, CB_GETCOUNT, 0, 0);
+		for (int index = 0; index < totalEntryCount; ++index)
+		{
+			LRESULT myData = SendMessage(keyboardSelectedKey, CB_GETITEMDATA, (WPARAM)index, 0);
+			if (keyboardKey == myData)
+			{
+				SendMessage(keyboardSelectedKey, CB_SETCURSEL, index, 0);
+				return;
+			}
+		}
+
+		// Some virtual key codes might not match with the new one when the keyboard layout is updated.
+		// Set a fallback and set the combobox and keyboardKey to number 0.
+		SendMessage(keyboardSelectedKey, CB_SETCURSEL, 0, 0);
+		keyboardKey = '0';
+	}
 }

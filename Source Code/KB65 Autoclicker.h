@@ -111,6 +111,14 @@
 
 
 /* buttons.cpp */
+typedef struct
+{
+	int x, y, w, h;
+	HWND* hWnd;
+} ButtonsInfo;
+extern ButtonsInfo buttonsInfo[];
+extern const size_t buttonsInfoSize;
+
 extern HWND
 activateMouseCheckBox,
 mouseLmB,
@@ -146,11 +154,51 @@ backToMainButton;
 
 extern LRESULT isAlwaysOnTopChecked;
 
-void LoadingButtons(HWND hWnd, HINSTANCE hInstance);
+void LoadButtons(HWND hWnd, HINSTANCE hInstance);
+
+
+
+/* dpi.cpp */
+#ifndef MDT_EFFECTIVE_DPI
+#define MDT_EFFECTIVE_DPI 0
+#endif
+#ifndef WM_DPICHANGED
+#define WM_DPICHANGED 0x02E0
+#endif
+
+typedef LONG (WINAPI* RegGetValuePtr)(HKEY, LPCWSTR, LPCWSTR, DWORD, LPDWORD, PVOID, LPDWORD);
+namespace TextScaling
+{
+	extern DWORD textScale;
+	LONG fRegGetValue(HKEY hkey, LPCWSTR lpSubKey, LPCWSTR lpValue);
+}
+
+namespace DPI
+{
+	extern int g_dpi;
+	extern bool isWindows10Later;
+
+	void InitWin32Environment();
+	inline int Scale(int value)
+	{
+		return MulDiv(value, g_dpi * TextScaling::textScale, 96 * 100);
+	}
+	BOOL AdjustWindowRectExOrDpi(LPRECT lpRect, DWORD dwStyle, BOOL bMenu, DWORD dwExStyle, UINT dpi);
+}
+
+void UpdateMainWindow(HWND hWnd, int appWidth, int appHeight);
 
 
 
 /* entries.cpp */
+typedef struct
+{
+	int x, y, w, h;
+	HWND* hWnd;
+} EntriesInfo;
+extern EntriesInfo entriesInfo[];
+extern const size_t entriesInfoSize;
+
 extern HWND
 mouseTimerFrame,
 mouseClickTypeFrame,
@@ -184,26 +232,30 @@ randIntervalAndHoldTimeFrame,
 randomIntervalEnter,
 holdTimeEnter;
 
-void LoadingEntries(HWND hWnd, HINSTANCE hInstance);
+void LoadEntries(HWND hWnd, HINSTANCE hInstance);
 
 
 
 /* fonts.cpp */
-extern HFONT globalFont;
+extern HFONT globalFont, tooltipFont;
 
-void LoadingFonts (HWND hWnd);
+void LoadFonts (HWND hWnd);
+void DestroyFonts();
 
 
 
 /* initloader.cpp */
+#define FROM_INI_FILE	0
+#define FROM_DROPFILES	1
+
 extern WCHAR
 bufSaveMouseHotkeySpecW[12],
 bufSaveMouseHotkeyW[20],
 bufSaveKeyboardHotkeySpecW[12],
 bufSaveKeyboardHotkeyW[20];
 
-void LoadInit(HWND hWnd);
-void SaveInit(HWND hWnd);
+void LoadIni(HWND hWnd, int mod, HDROP hDropFiles);
+void SaveIni(HWND hWnd);
 
 
 
@@ -245,8 +297,9 @@ extern WCHAR
 *hotkeySpecialTextW;
 
 void GetHotkey(HWND hWnd, UINT* hotkey, bool* hotkeySelected, int selectMod);
-void LoadHotkeyW(HWND hWnd, WCHAR *hotkeySpecTxtW, UINT *specialKey, WCHAR *hotkeyTxtW, UINT *hotkey, int selectMod);
-void LoadHotkeyA(HWND hWnd, char *hotkeySpecTxtA, UINT *specialKey, char *hotkeyTxtA, UINT *hotkey, int selectMod);
+void UpdateHotkeysAfterLangChange();
+void LoadHotkeyW(HWND hWnd, WCHAR *hotkeySpecTxtW, UINT *specialKey, WCHAR *hotkeyTxtW, int selectMod);
+void LoadHotkeyA(HWND hWnd, char *hotkeySpecTxtA, UINT *specialKey, char *hotkeyTxtA, int selectMod);
 void GetDebugHexCode(HWND debugHotkeyButton);
 int GetMouseButton(HWND mouseLmBText);
 int GetMouseClickType(HWND mouseClickTypeWnd);
@@ -262,7 +315,7 @@ void StartPressing(UINT keyboardKey);
 
 
 /* images.cpp */
-void LoadingImages();
+void LoadImages();
 void GetImages(HDC hdc, int themeOption);
 void DestroyImages();
 
@@ -270,17 +323,29 @@ void DestroyImages();
 
 
 /* misc.cpp */
+#ifndef MSGFLT_ALLOW
+#define MSGFLT_ALLOW 1
+#endif
+#ifndef WM_COPYGLOBALDATA
+#define WM_COPYGLOBALDATA 0x0049
+#endif
+
 #define AUTOCLICKER 0
 #define AUTOPRESSER 1
 
-extern OSVERSIONINFO winver;
+typedef BOOL (WINAPI *CHANGEWINDOWMESSAGEFILTEREX)(HWND, UINT, DWORD, PVOID);
+
 extern bool
 mouseActive,
 keyboardActive;
 
-int DPIScale(int value);
+extern RTL_OSVERSIONINFOW winver;
+extern OSVERSIONINFO winverOld;
+
 bool isWindowsNT();
 bool isWindowsXPLater();
+bool isWindowsVistaLater();
+void ChangeDragDropMsgFilter(HWND hWnd);
 void RealignZOrderChain(HWND hWnd);
 void ActiveAppearance(HWND hWnd, int mod, bool isEnabled);
 void HotkeySelectionAppearance(HWND hWnd, WORD hotkeyButtonId, bool isEnabled);
@@ -328,12 +393,18 @@ void PageTexts(HDC hdc, int pageTexts);
 #define THEMESOCCER		6
 #define THEMEOCEANIC	7
 
+// Titlebar color macro (Windows 10+)
+#ifndef DWMWA_CAPTION_COLOR
+#define DWMWA_CAPTION_COLOR 35
+#endif
+
 extern int themeOption;
-extern HBRUSH themeColor;
-extern COLORREF lineColor1, lineColor2;
+extern HBRUSH themeColor, hColumnColor;
+extern COLORREF titleColor, lineColor, columnColor;
 
 void DrawLine(HDC hdc, int x1, int y1, int x2, int y2, COLORREF color, int lineWidth);
-void SelectTheme();
+void SelectTheme(HWND hWnd);
+void DeleteBrush();
 
 
 
@@ -364,7 +435,7 @@ void ToggleMenusDuringAutomation(HWND hWnd, int mod, int hideShow);
 /* tooltip.cpp */
 extern LRESULT isDisableTooltipsChecked;
 
-void LoadingTooltips(HWND hWnd);
+void LoadTooltips(HWND hWnd);
 void Tooltips(HWND hWnd, int mode);
 
 
