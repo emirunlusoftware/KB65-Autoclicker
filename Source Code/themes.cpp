@@ -120,7 +120,7 @@ void SelectTheme(HWND hWnd)
 
 
 
-// Windows 10+
+// Windows 11+
 void TitleBarColor(HWND hWnd)
 {
 	typedef HRESULT (WINAPI *pDwmSetWindowAttribute)(HWND, DWORD, LPCVOID, DWORD);
