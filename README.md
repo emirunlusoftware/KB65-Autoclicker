@@ -19,4 +19,4 @@ hours.
 - Runs on Windows 98/ME and all later versions, including
 Windows 10 and 11.
 
-For more information, [read the User Guide.](https://raw.githubusercontent.com/emirunlusoftware/KB65-Autoclicker/0a716ccb4dfbfb58d37e6db3135faf7b62a28e8d/KB65%20Autoclicker%20User%20Guide%20v1.0.3.pdf)
+For more information, [read the User Guide.](https://raw.githubusercontent.com/emirunlusoftware/KB65-Autoclicker/3ffe15491b96288f7cb7200914d2e01759990265/KB65%20Autoclicker%20User%20Guide%20v1.0.3.1.pdf)
