@@ -483,7 +483,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		case WM_DPICHANGED:
 		case WM_SETTINGCHANGE:
 		{
-			if (DPI::isWindows10Later)
+			if (isWindows10Later())
 			{
 				// Jump to WM_SIZE
 				if (IsIconic(hWnd) && (lParam && strcmp((LPCSTR)lParam, "WindowMetrics") == 0))
@@ -550,7 +550,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		// Otherwise size of everything except the main window's size won't set properly.
 		case WM_SIZE:
 		{
-			if (DPI::isWindows10Later)
+			if (isWindows10Later())
 			{
 				if (wParam == SIZE_RESTORED && (textScaleChanged))
 				{

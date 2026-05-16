@@ -16,7 +16,7 @@ keyboardActive = false;
 OSVERSIONINFO winverOld = {0};
 
 // Minimum OS version: 5.0 (Windows 2000)
-// Maximum OS version: 10.0 (Windows 10/11)
+// Maximum OS version: 10.0 (Windows 10/11 & later)
 RTL_OSVERSIONINFOW winver = {0};
 
 
@@ -36,9 +36,17 @@ bool isWindowsXPLater()
 }
 
 
-bool isWindowsVistaLater()
+bool isWindows10Later()
 {
-	return (winver.dwMajorVersion >= 6 && winver.dwMinorVersion >= 0);
+	// DPI, Text Scale etc.
+	return (winver.dwMajorVersion >= 10);
+}
+
+
+bool isWindows11Later()
+{
+	// DWMWA_CAPTION_COLOR requires Windows 11+
+	return (winver.dwMajorVersion >= 10 && winver.dwBuildNumber >= 22000);
 }
 
 
@@ -318,4 +326,51 @@ void PopulateComboBox(HWND keyboardSelectedKey, HKL hkl)
 		SendMessage(keyboardSelectedKey, CB_SETCURSEL, 0, 0);
 		keyboardKey = '0';
 	}
+}
+
+
+
+// .ini optimized of PathFileExtensionW (from shlwapi.h)
+bool IniExtensionFoundW(LPCWSTR filePath)
+{
+	if (!filePath)
+		return false;
+
+	size_t pathLen = wcslen(filePath);
+
+	// The shortest file name with extension is ".ini" that's length is four.
+	if (pathLen >= 4)
+	{
+		const wchar_t* extension = filePath + (pathLen - 4);
+		if (extension[0] == L'.' &&
+			(extension[1] == L'i' || extension[1] == L'I') &&
+			(extension[2] == L'n' || extension[2] == L'N') &&
+			(extension[3] == L'i' || extension[3] == L'I'))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool IniExtensionFoundA(LPCSTR filePath)
+{
+	if (!filePath)
+		return false;
+
+	size_t pathLen = strlen(filePath);
+	if (pathLen >= 4)
+	{
+		const char* extension = filePath + (pathLen - 4);
+		if (extension[0] == '.' &&
+			(extension[1] == 'i' || extension[1] == 'I') &&
+			(extension[2] == 'n' || extension[2] == 'N') &&
+			(extension[3] == 'i' || extension[3] == 'I'))
+		{
+			return true;
+		}
+	}
+
+	return false;
 }

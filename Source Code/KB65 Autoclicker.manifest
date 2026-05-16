@@ -2,7 +2,7 @@
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
 
 	<assemblyIdentity
-		version="1.0.3.0"
+		version="1.0.3.1"
 		name="KB65 Autoclicker"
 		processorArchitecture="*"
 		type="win32"/>

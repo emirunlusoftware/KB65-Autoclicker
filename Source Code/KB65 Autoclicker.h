@@ -176,7 +176,6 @@ namespace TextScaling
 namespace DPI
 {
 	extern int g_dpi;
-	extern bool isWindows10Later;
 
 	void InitWin32Environment();
 	inline int Scale(int value)
@@ -344,13 +343,16 @@ extern OSVERSIONINFO winverOld;
 
 bool isWindowsNT();
 bool isWindowsXPLater();
-bool isWindowsVistaLater();
+bool isWindows10Later();
+bool isWindows11Later();
 void ChangeDragDropMsgFilter(HWND hWnd);
 void RealignZOrderChain(HWND hWnd);
 void ActiveAppearance(HWND hWnd, int mod, bool isEnabled);
 void HotkeySelectionAppearance(HWND hWnd, WORD hotkeyButtonId, bool isEnabled);
 void DebugAppearance(HWND hWnd, bool isEnabled);
 void PopulateComboBox(HWND keyboardSelectedKey, HKL hkl);
+bool IniExtensionFoundW(LPCWSTR filePath);
+bool IniExtensionFoundA(LPCSTR filePath);
 
 
 
@@ -393,9 +395,12 @@ void PageTexts(HDC hdc, int pageTexts);
 #define THEMESOCCER		6
 #define THEMEOCEANIC	7
 
-// Titlebar color macro (Windows 10+)
+// Titlebar color macros (Windows 11+)
 #ifndef DWMWA_CAPTION_COLOR
 #define DWMWA_CAPTION_COLOR 35
+#endif
+#ifndef DWM_COLOR_DEFAULT
+#define DWM_COLOR_DEFAULT 0xFFFFFFFF
 #endif
 
 extern int themeOption;

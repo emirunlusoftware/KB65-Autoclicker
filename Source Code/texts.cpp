@@ -76,7 +76,7 @@ void PageTexts(HDC hdc, int pageTexts)
 		{
 			TextOut(hdc,
 				DPI::Scale(5), DPI::Scale(348),
-				"v1.0.3", STRLEN_INT("v1.0.3"));
+				"v1.0.3.1", STRLEN_INT("v1.0.3.1"));
 			break;
 		}
 	}

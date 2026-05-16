@@ -59,7 +59,7 @@ void SelectTheme(HWND hWnd)
 	{
 		case THEMEDEFAULT:
 		default:
-			titleColor = GetSysColor(COLOR_MENU);
+			titleColor = DWM_COLOR_DEFAULT;
 			themeColor = (HBRUSH) (COLOR_BTNSHADOW);
 			lineColor = RGB(144, 144, 144);
 			break;
@@ -114,7 +114,7 @@ void SelectTheme(HWND hWnd)
 			break;
 	}
 
-	if (DPI::isWindows10Later)
+	if (isWindows11Later())
 		TitleBarColor(hWnd);
 }
 

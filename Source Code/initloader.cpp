@@ -9,15 +9,14 @@ void LoadIni(HWND hWnd, int mod, HDROP hDropFiles)
 {
 	if (isWindowsNT())
 	{
-		WCHAR szFile[MAX_PATH] = L"";
+		wchar_t szFile[MAX_PATH] = L"";
 		OPENFILENAMEW ofnLoadW = {0};
 
 		if (mod == FROM_DROPFILES)
 		{
 			if (DragQueryFileW(hDropFiles, 0, szFile, MAX_PATH))
 			{
-				const wchar_t* extensionW = PathFindExtensionW(szFile);
-				if (_wcsicmp(extensionW, L".ini") == 0)
+				if (IniExtensionFoundW(szFile))
 				{
 					ofnLoadW.lpstrFile = szFile;
 					goto skip_gofn_func_for_dropfilesW;
@@ -199,8 +198,7 @@ skip_gofn_func_for_dropfilesW:
 		{
 			if (DragQueryFileA(hDropFiles, 0, szFile, MAX_PATH))
 			{
-				const char* extensionA = PathFindExtensionA(szFile);
-				if (_stricmp(extensionA, ".ini") == 0)
+				if (IniExtensionFoundA(szFile))
 				{
 					ofnLoadA.lpstrFile = szFile;
 					goto skip_gofn_func_for_dropfilesA;

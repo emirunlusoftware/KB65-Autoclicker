@@ -40,7 +40,6 @@ namespace TextScaling
 namespace DPI
 {
 	int g_dpi = 96;
-	bool isWindows10Later = false;
 
 	typedef BOOL (WINAPI* SetProcessDpiAwarenessContextPtr)(HANDLE);
 	typedef HMONITOR (WINAPI* MonitorFromPointPtr)(POINT, DWORD);
@@ -66,7 +65,6 @@ namespace DPI
 				{
 					winver.dwOSVersionInfoSize = sizeof(winver);
 					pRtlGv(&winver);
-					isWindows10Later = (winver.dwMajorVersion >= 10);
 				}
 				FreeLibrary(hNtDll);
 			}
@@ -74,7 +72,7 @@ namespace DPI
 
 		void SetDPITextSizeAtStart()
 		{
-			if (isWindows10Later)
+			if (isWindows10Later())
 			{
 				// Get TextScaleFactor value from registry.
 				if (TextScaling::fRegGetValue(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Accessibility", L"TextScaleFactor") != ERROR_SUCCESS)
@@ -84,7 +82,7 @@ namespace DPI
 			}
 
 			// Get DPI value.
-			if (isWindows10Later)
+			if (isWindows10Later())
 			{
 				UINT dpi_X = 0, dpi_Y = 0;
 
@@ -140,7 +138,7 @@ namespace DPI
 	{
 		// AdjustWindowRectExForDpi()
 		// (Windows 10 and later)
-		if (isWindows10Later)
+		if (isWindows10Later())
 		{
 			HMODULE hUser32 = GetModuleHandleW(L"user32.dll");
 			if (hUser32)

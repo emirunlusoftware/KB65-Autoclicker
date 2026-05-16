@@ -32,14 +32,12 @@
 #include <commctrl.h>
 #include <mmsystem.h>
 #include <shellapi.h>
-#include <shlwapi.h>
-#pragma comment(lib, "shlwapi.lib")
 #pragma comment(lib, "winmm.lib")
 
 // C RunTime Header Files
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <wchar.h>
 
 // TODO: reference additional headers your program requires here
